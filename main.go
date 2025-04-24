@@ -12,18 +12,26 @@ import (
 type Buffer struct {
     filepath string
     lines []string
-    top_visible_line_idx uint
-    bottom_visible_line_idx uint
+    top_visible_line_idx int
 }
 
-func clearScreen() {
+type ANSIInstructions struct{}
+
+func (ANSIInstructions) clearScreen() {
     fmt.Printf("\x1b[2J")
 }
 
-func setCursorPosition(x, y int) {
+func (ANSIInstructions) setCursorPosition(x, y int) {
     // Incrementing the given values, because ANSI row/col positions
     // seem to be 1-indexed instead of 0-indexed
     fmt.Printf("\033[%d;%dH", y+1, x+1)
+}
+
+type Motions struct {
+    cursor_up byte
+    cursor_down byte
+    cursor_left byte
+    cursor_right byte
 }
 
 func main() {
@@ -68,13 +76,22 @@ func main() {
         return
     }
 
-    var buffers []Buffer = []Buffer{}
+
+    motions := Motions {
+        cursor_up: 'k',
+        cursor_down: 'j',
+        cursor_left: 'h',
+        cursor_right: 'l',
+    }
+
+    ANSI := ANSIInstructions{}
+
+    buffers := []Buffer{}
 
     buffer := Buffer {
         filepath: filename,
         lines: lines,
         top_visible_line_idx: 0,
-        bottom_visible_line_idx: 0,
     }
 
     buffers = append(buffers, buffer)
@@ -89,10 +106,10 @@ func main() {
 
     // Resetting cursor position and terminal state after the program closes.
     // This isn't exactly true, because we're not resetting it exactly as it was.
-    defer setCursorPosition(0, 0)
+    defer ANSI.setCursorPosition(0, 0)
     defer term.Restore(int(os.Stdin.Fd()), oldState)
 
-    term_height, term_width, err := getTerminalSize()
+    term_height, term_width, err := ANSI.getTerminalSize()
 
     if err != nil {
         panic(err)
@@ -122,25 +139,34 @@ func main() {
         "Press \"q\" to exit...",
     }
 
-    setCursorPosition(left_chrome_width, top_chrome_height)
+    ANSI.setCursorPosition(left_chrome_width, top_chrome_height)
 
-    // Setting values to track where we believe that the cursor is
+    // Setting values to track where we believe that the cursor is.
     cursor_y := top_chrome_height
     cursor_x := left_chrome_width
+
+
+    // Adding a helper to deliver ANSI instruction, while
+    // also updating native variables to track the cursor
+    setCursorPosition := func(x, y int) {
+        ANSI.setCursorPosition(x, y)
+        cursor_x = x
+        cursor_y = y
+    }
 
     // Declaring a buffer to store a single byte of user input at a time
     buf := make([]byte, 1)
 
     needs_redraw := true
 
-    clearScreen()
+    ANSI.clearScreen()
 
     for {
         if needs_redraw {
             pre_draw_cursor_x := cursor_x
             pre_draw_cursor_y := cursor_y
 
-            clearScreen()
+            ANSI.clearScreen()
             setCursorPosition(0, 0)
 
             // Printing top chrome content
@@ -149,27 +175,29 @@ func main() {
 
                 fmt.Printf("%s", line)
                 setCursorPosition(left_chrome_width, cursor_y+1)
-                cursor_x = left_chrome_width
-                cursor_y += 1
             }
 
             // Printing main buffer content
-            for i := 0; i < content_area_row_count; i++ {
-                if i >= len(buffer.lines) {
+            for i := 0; i <= content_area_row_count; i++ {
+                line_idx := i + buffer.top_visible_line_idx
+
+                // Stopping if about to try to draw a line
+                // that doesn't exist
+                if line_idx >= len(buffer.lines) {
                     break
                 }
 
-                line := buffer.lines[i]
+                line := buffer.lines[line_idx]
 
                 fmt.Printf("%s", line)
+
+                // TODO it's possible there's a bug here, caused by incrementing
+                // the cursor position when it's already at the end
                 setCursorPosition(left_chrome_width, cursor_y+1)
-                cursor_x = left_chrome_width
-                cursor_y += 1
             }
 
             // Resetting state after re-draw
-            cursor_x = pre_draw_cursor_x
-            cursor_y = pre_draw_cursor_y
+            setCursorPosition(pre_draw_cursor_x, pre_draw_cursor_y)
             needs_redraw = false
         }
 
@@ -182,37 +210,49 @@ func main() {
             break
         }
 
-        if buf[0] == 'j' && cursor_y+1 <= content_area_max_y {
-            setCursorPosition(cursor_x, cursor_y+1)
-            cursor_y += 1
+        if buf[0] == motions.cursor_down {
+            is_at_viewport_bottom := cursor_y == content_area_max_y
+            can_scroll := buffer.top_visible_line_idx + content_area_row_count + 1 < len(buffer.lines)
+
+            if !is_at_viewport_bottom {
+                setCursorPosition(cursor_x, cursor_y+1)
+            } else if can_scroll {
+                buffer.top_visible_line_idx += 1
+                needs_redraw = true
+            }
         }
 
-        if buf[0] == 'k' && cursor_y-1 >= content_area_min_y {
-            setCursorPosition(cursor_x, cursor_y-1)
-            cursor_y -= 1
+        if buf[0] == motions.cursor_up {
+            is_at_viewport_top := cursor_y == content_area_min_y
+            can_scroll := buffer.top_visible_line_idx > 0
+
+            if !is_at_viewport_top {
+                setCursorPosition(cursor_x, cursor_y-1)
+            } else if can_scroll {
+                buffer.top_visible_line_idx -= 1
+                needs_redraw = true
+            }
         }
 
-        if buf[0] == 'h' && cursor_x-1 >= content_area_min_x {
+        if buf[0] == motions.cursor_left && cursor_x-1 >= content_area_min_x {
             setCursorPosition(cursor_x-1, cursor_y)
-            cursor_x -= 1
         }
 
-        if buf[0] == 'l' && cursor_x+1 <= content_area_max_x {
+        if buf[0] == motions.cursor_right && cursor_x+1 <= content_area_max_x {
             setCursorPosition(cursor_x+1, cursor_y)
-            cursor_x += 1
         }
 
         // Exiting the loop if 'q' is pressed
         if buf[0] == 'q' {
-            clearScreen()
+            ANSI.clearScreen()
             break
         }
     }
 }
 
-func getTerminalSize() (rows, cols int, err error) {
-    fmt.Print("\033[9999;9999H") // Move cursor to bottom-right
-    fmt.Print("\033[6n")         // Query cursor position
+func (ANSIInstructions) getCursorPosition() (x, y int, err error) {
+    // Querying the terminal for cursor position
+    fmt.Print("\033[6n")
 
     // Reading the response
     var response []byte
@@ -237,15 +277,37 @@ func getTerminalSize() (rows, cols int, err error) {
         return 0, 0, fmt.Errorf("unexpected response format: %s", response)
     }
 
-    rows, err = strconv.Atoi(parts[0])
+    rows, err := strconv.Atoi(parts[0])
     if err != nil {
         return 0, 0, fmt.Errorf("failed to parse rows: %v", err)
     }
 
-    cols, err = strconv.Atoi(parts[1])
+    cols, err := strconv.Atoi(parts[1])
     if err != nil {
         return 0, 0, fmt.Errorf("failed to parse cols: %v", err)
     }
 
     return rows, cols, nil
 }
+
+func (ANSIInstructions) getTerminalSize() (rows, cols int, err error) {
+    last_x, last_y, err := ANSIInstructions {}.getCursorPosition()
+
+    if err != nil {
+        return 0, 0, err
+    }
+
+    // Moving cursor to bottom-right
+    ANSIInstructions{}.setCursorPosition(9999, 9999)
+
+    w, h, err := ANSIInstructions{}.getCursorPosition()
+
+    if err != nil {
+        return 0, 0, err
+    }
+
+    ANSIInstructions{}.setCursorPosition(last_x, last_y)
+
+    return w, h, nil
+}
+
