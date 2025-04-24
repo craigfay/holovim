@@ -1,246 +1,251 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"golang.org/x/term"
-	"os"
-	"strconv"
-	"strings"
+    "bufio"
+    "fmt"
+    "golang.org/x/term"
+    "os"
+    "strconv"
+    "strings"
 )
 
-// A type that maps human-readable names to their corresponding ANSI escape sequence.
-// These can be given to the terminal as strings, which represent special instructions.
-// https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
-type AnsiEscapeSequences struct {
-	ClearScreen      string
-	CursorToPosition func(row, col int) string
-	CursorMoveUp     func(n int) string
-	CursorMoveDown   func(n int) string
-	CursorMoveRight  func(n int) string
-	CursorMoveLeft   func(n int) string
-	CursorToNextLine func(n int) string
-	CursorToPrevLine func(n int) string
-	CursorToColumn   func(n int) string
-	HighlightOn      string
-	HighlightOff     string
-}
-
-var ansi = AnsiEscapeSequences{
-	ClearScreen:      "\x1b[2J",
-	CursorToPosition: func(row, col int) string { return fmt.Sprintf("\x1b[%d;%dH", row, col) },
-	CursorMoveUp:     func(n int) string { return fmt.Sprintf("\x1b[%dA", n) },
-	CursorMoveDown:   func(n int) string { return fmt.Sprintf("\x1b[%dB", n) },
-	CursorMoveRight:  func(n int) string { return fmt.Sprintf("\x1b[%dC", n) },
-	CursorMoveLeft:   func(n int) string { return fmt.Sprintf("\x1b[%dD", n) },
-	CursorToNextLine: func(n int) string { return fmt.Sprintf("\x1b[%dE", n) },
-	CursorToPrevLine: func(n int) string { return fmt.Sprintf("\x1b[%dF", n) },
-	CursorToColumn:   func(n int) string { return fmt.Sprintf("\x1b[%dG", n) },
-	HighlightOn:      "\x1b[7m",
-	HighlightOff:     "\x1b[0m",
+type Buffer struct {
+    filepath string
+    lines []string
+    top_visible_line_idx uint
+    bottom_visible_line_idx uint
 }
 
 func clearScreen() {
-	fmt.Printf("%s", ansi.ClearScreen)
+    fmt.Printf("\x1b[2J")
 }
 
 func setCursorPosition(x, y int) {
-	// Incrementing the given values, because ANSI row/col positions
-	// seem to be 1-indexed instead of 0-indexed
-	fmt.Printf("\033[%d;%dH", y+1, x+1)
+    // Incrementing the given values, because ANSI row/col positions
+    // seem to be 1-indexed instead of 0-indexed
+    fmt.Printf("\033[%d;%dH", y+1, x+1)
 }
 
 func main() {
-	// Checking if a filename is provided as a command-line argument
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run main.go <filename>")
-		return
-	}
+    args := os.Args
 
-	// Extracting the filename from the command-line arguments, and opening it
-	filename := os.Args[1]
-	file, err := os.Open(filename)
+    // In development, a workaround is necessary to pass arguments
+    // that end in ".go", because the go compiler thinks they are part
+    // of invalid input, instead of an argument to our compiled program.
+    // In this case, we can use `go run main.go -- editme.go`. This
+    // codeblock modifies the args list to allow this workaround.
+    for i, arg := range args {
+        if arg == "--" {
+            // Ignoring everything before "--"
+            args = args[i:]
+            break
+        }
+    }
 
-	if err != nil {
-		fmt.Printf("Error opening file %s: %v\n", filename, err)
-		return
-	}
+    // Extracting the filename from the command-line arguments, and opening it
+    filename := args[1]
 
-	// Ensuring the file is closed when the program exits
-	defer file.Close()
+    file, err := os.Open(filename)
 
-	// Loading the file contents into a list of strings, line by line
-	lines := []string{}
-	scanner := bufio.NewScanner(file)
+    if err != nil {
+        fmt.Printf("Error opening file %s: %v\n", filename, err)
+        return
+    }
 
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
+    // Ensuring the file is closed when the program exits
+    defer file.Close()
 
-	if err := scanner.Err(); err != nil {
-		fmt.Printf("Error scanning file %s\n", err)
-		return
-	}
+    // Loading the file contents into a list of strings, line by line
+    lines := []string{}
+    scanner := bufio.NewScanner(file)
 
-	// Saving the current state of the terminal,
-	// and re-loading it when this program exits
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+    for scanner.Scan() {
+        lines = append(lines, scanner.Text())
+    }
 
-	if err != nil {
-		panic(err)
-	}
+    if err := scanner.Err(); err != nil {
+        fmt.Printf("Error scanning file %s\n", err)
+        return
+    }
 
-	// Resetting cursor position and terminal state after the program closes.
-	// This isn't exactly true, because we're not resetting it exactly as it was.
-	defer setCursorPosition(0, 0)
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
+    var buffers []Buffer = []Buffer{}
 
-	term_height, term_width, err := getTerminalSize()
+    buffer := Buffer {
+        filepath: filename,
+        lines: lines,
+        top_visible_line_idx: 0,
+        bottom_visible_line_idx: 0,
+    }
 
-	if err != nil {
-		panic(err)
-	}
+    buffers = append(buffers, buffer)
 
-	top_chrome_height := 1
-	bottom_chrome_height := 1
+    // Saving the current state of the terminal,
+    // and re-loading it when this program exits
+    oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 
-	// 3 columns for line numbers, 2 columns for padding
-	left_chrome_width := 5
+    if err != nil {
+        panic(err)
+    }
 
-	content_area_row_count := term_height - top_chrome_height - bottom_chrome_height
+    // Resetting cursor position and terminal state after the program closes.
+    // This isn't exactly true, because we're not resetting it exactly as it was.
+    defer setCursorPosition(0, 0)
+    defer term.Restore(int(os.Stdin.Fd()), oldState)
 
-	// The minimum allowed cursor_y position inside of the content area
-	content_area_min_y := top_chrome_height
+    term_height, term_width, err := getTerminalSize()
 
-	// The maximum allowed cursor_y position inside of the content area
-	content_area_max_y := term_height - bottom_chrome_height
+    if err != nil {
+        panic(err)
+    }
 
-	// The minimum allowed cursor_x position inside of the content area
-	content_area_min_x := left_chrome_width
+    top_chrome_height := 1
+    bottom_chrome_height := 1
 
-	// The maximum allowed cursor_x position inside of the content area
-	content_area_max_x := term_width
+    // 3 columns for line numbers, 2 columns for padding
+    left_chrome_width := 5
 
-	clearScreen()
-	setCursorPosition(0, 0)
+    content_area_row_count := term_height - top_chrome_height - bottom_chrome_height
 
-	// Setting values to track where we believe that the cursor is
-	cursor_x := left_chrome_width
-	cursor_y := top_chrome_height
+    // The minimum allowed cursor_y position inside of the content area
+    content_area_min_y := top_chrome_height
 
-	top_chrome_content := []string{
-		"Press \"q\" to exit...",
-	}
+    // The maximum allowed cursor_y position inside of the content area
+    content_area_max_y := term_height - bottom_chrome_height
 
-	// Printing top chrome content
-	for i := 0; i < top_chrome_height; i++ {
-		line := top_chrome_content[i]
+    // The minimum allowed cursor_x position inside of the content area
+    content_area_min_x := left_chrome_width
 
-		fmt.Printf("%s", line)
-		setCursorPosition(left_chrome_width, cursor_y+1)
-		cursor_x = left_chrome_width
-		cursor_y += 1
-	}
+    // The maximum allowed cursor_x position inside of the content area
+    content_area_max_x := term_width
 
-	// Printing main buffer content
-	for i := 0; i < content_area_row_count; i++ {
-		if i >= len(lines) {
-			break
-		}
+    top_chrome_content := []string{
+        "Press \"q\" to exit...",
+    }
 
-		line := lines[i]
+    setCursorPosition(left_chrome_width, top_chrome_height)
 
-		fmt.Printf("%s", line)
-		setCursorPosition(left_chrome_width, cursor_y+1)
-		cursor_x = left_chrome_width
-		cursor_y += 1
-	}
+    // Setting values to track where we believe that the cursor is
+    cursor_y := top_chrome_height
+    cursor_x := left_chrome_width
 
-	setCursorPosition(left_chrome_width, top_chrome_height)
-	cursor_y = top_chrome_height
-	cursor_x = left_chrome_width
+    // Declaring a buffer to store a single byte of user input at a time
+    buf := make([]byte, 1)
 
-	// Declaring a buffer to store a single byte of user input at a time
-	buf := make([]byte, 1)
+    needs_redraw := true
 
-	for {
-		// Reading a single byte from stdin into the buffer
-		_, err := os.Stdin.Read(buf)
+    clearScreen()
 
-		if err != nil {
-			fmt.Println("Error reading input:", err)
-			break
-		}
+    for {
+        if needs_redraw {
+            pre_draw_cursor_x := cursor_x
+            pre_draw_cursor_y := cursor_y
 
-		if buf[0] == 'j' && cursor_y+1 <= content_area_max_y {
-			fmt.Printf("%s", ansi.CursorMoveDown(1))
-			setCursorPosition(cursor_x, cursor_y+1)
-			cursor_y += 1
-		}
+            clearScreen()
+            setCursorPosition(0, 0)
 
-		if buf[0] == 'k' && cursor_y-1 >= content_area_min_y {
-			fmt.Printf("%s", ansi.CursorMoveUp(1))
-			setCursorPosition(cursor_x, cursor_y-1)
-			cursor_y -= 1
-		}
+            // Printing top chrome content
+            for i := 0; i < top_chrome_height; i++ {
+                line := top_chrome_content[i]
 
-		if buf[0] == 'h' && cursor_x-1 >= content_area_min_x {
-			fmt.Printf("%s", ansi.CursorMoveLeft(1))
-			setCursorPosition(cursor_x-1, cursor_y)
-			cursor_x -= 1
-		}
+                fmt.Printf("%s", line)
+                setCursorPosition(left_chrome_width, cursor_y+1)
+                cursor_x = left_chrome_width
+                cursor_y += 1
+            }
 
-		if buf[0] == 'l' && cursor_x+1 <= content_area_max_x {
-			fmt.Printf("%s", ansi.CursorMoveRight(1))
-			setCursorPosition(cursor_x+1, cursor_y)
-			cursor_x += 1
-		}
+            // Printing main buffer content
+            for i := 0; i < content_area_row_count; i++ {
+                if i >= len(buffer.lines) {
+                    break
+                }
 
-		// Exiting the loop if 'q' is pressed
-		if buf[0] == 'q' {
-			clearScreen()
-			break
-		}
-	}
+                line := buffer.lines[i]
 
+                fmt.Printf("%s", line)
+                setCursorPosition(left_chrome_width, cursor_y+1)
+                cursor_x = left_chrome_width
+                cursor_y += 1
+            }
+
+            // Resetting state after re-draw
+            cursor_x = pre_draw_cursor_x
+            cursor_y = pre_draw_cursor_y
+            needs_redraw = false
+        }
+
+
+        // Reading a single byte from stdin into the buffer
+        _, err := os.Stdin.Read(buf)
+
+        if err != nil {
+            fmt.Println("Error reading input:", err)
+            break
+        }
+
+        if buf[0] == 'j' && cursor_y+1 <= content_area_max_y {
+            setCursorPosition(cursor_x, cursor_y+1)
+            cursor_y += 1
+        }
+
+        if buf[0] == 'k' && cursor_y-1 >= content_area_min_y {
+            setCursorPosition(cursor_x, cursor_y-1)
+            cursor_y -= 1
+        }
+
+        if buf[0] == 'h' && cursor_x-1 >= content_area_min_x {
+            setCursorPosition(cursor_x-1, cursor_y)
+            cursor_x -= 1
+        }
+
+        if buf[0] == 'l' && cursor_x+1 <= content_area_max_x {
+            setCursorPosition(cursor_x+1, cursor_y)
+            cursor_x += 1
+        }
+
+        // Exiting the loop if 'q' is pressed
+        if buf[0] == 'q' {
+            clearScreen()
+            break
+        }
+    }
 }
 
 func getTerminalSize() (rows, cols int, err error) {
-	fmt.Print("\033[9999;9999H") // Move cursor to bottom-right
-	fmt.Print("\033[6n")         // Query cursor position
+    fmt.Print("\033[9999;9999H") // Move cursor to bottom-right
+    fmt.Print("\033[6n")         // Query cursor position
 
-	// Reading the response
-	var response []byte
-	buf := make([]byte, 1)
+    // Reading the response
+    var response []byte
+    buf := make([]byte, 1)
 
-	for {
-		_, err := os.Stdin.Read(buf)
-		if err != nil {
-			return 0, 0, fmt.Errorf("failed to read from stdin: %v", err)
-		}
-		if buf[0] == 'R' {
-			break
-		}
-		response = append(response, buf[0])
-	}
+    for {
+        _, err := os.Stdin.Read(buf)
+        if err != nil {
+            return 0, 0, fmt.Errorf("failed to read from stdin: %v", err)
+        }
+        if buf[0] == 'R' {
+            break
+        }
+        response = append(response, buf[0])
+    }
 
-	// Parsing the response
-	// Response format: "\033[<rows>;<cols>R"
-	parts := strings.Split(strings.Trim(string(response), "\033["), ";")
+    // Parsing the response
+    // Response format: "\033[<rows>;<cols>R"
+    parts := strings.Split(strings.Trim(string(response), "\033["), ";")
 
-	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("unexpected response format: %s", response)
-	}
+    if len(parts) != 2 {
+        return 0, 0, fmt.Errorf("unexpected response format: %s", response)
+    }
 
-	rows, err = strconv.Atoi(parts[0])
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to parse rows: %v", err)
-	}
+    rows, err = strconv.Atoi(parts[0])
+    if err != nil {
+        return 0, 0, fmt.Errorf("failed to parse rows: %v", err)
+    }
 
-	cols, err = strconv.Atoi(parts[1])
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to parse cols: %v", err)
-	}
+    cols, err = strconv.Atoi(parts[1])
+    if err != nil {
+        return 0, 0, fmt.Errorf("failed to parse cols: %v", err)
+    }
 
-	return rows, cols, nil
+    return rows, cols, nil
 }
