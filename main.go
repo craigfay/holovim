@@ -63,7 +63,6 @@ func main() {
         return
     }
 
-
     motions := Motions {
         cursor_up: 'k',
         cursor_down: 'j',
@@ -146,6 +145,8 @@ func main() {
 
     needs_redraw := true
 
+	last_chosen_column_number := 0
+
     ANSI.clearScreen()
 
     for {
@@ -175,11 +176,7 @@ func main() {
                 }
 
                 line := buffer.lines[line_idx]
-
                 fmt.Printf("%s", line)
-
-                // TODO it's possible there's a bug here, caused by incrementing
-                // the cursor position when it's already at the end
                 setCursorPosition(left_chrome_width, cursor_y+1)
             }
 
@@ -188,6 +185,28 @@ func main() {
             needs_redraw = false
         }
 
+		line_number := buffer.top_visible_line_idx + cursor_y - top_chrome_height;
+		column_number := cursor_x - left_chrome_width
+		line_length := len(buffer.lines[line_number])
+		is_at_end_of_line := column_number + 1 >= line_length
+
+		highest_column_number_on_line := max(line_length - 1, 0)
+
+		// Preventing the cursor from being to the right of the end of the current line
+		if column_number > line_length {
+			last_chosen_column_number = max(column_number, last_chosen_column_number)
+			setCursorPosition(left_chrome_width + highest_column_number_on_line, cursor_y)
+			continue
+		}
+
+		// Restoring last chosen column number, if possible
+		if last_chosen_column_number != column_number && column_number != highest_column_number_on_line {
+			setCursorPosition(left_chrome_width + min(last_chosen_column_number, highest_column_number_on_line), cursor_y)
+			continue
+		}
+
+		if last_chosen_column_number == 0 {
+		}
 
         // Reading a single byte from stdin into the buffer
         _, err := os.Stdin.Read(buf)
@@ -224,10 +243,14 @@ func main() {
 
         if buf[0] == motions.cursor_left && cursor_x-1 >= content_area_min_x {
             setCursorPosition(cursor_x-1, cursor_y)
+			last_chosen_column_number = cursor_x - left_chrome_width
         }
 
         if buf[0] == motions.cursor_right && cursor_x+1 <= content_area_max_x {
-            setCursorPosition(cursor_x+1, cursor_y)
+			if !is_at_end_of_line {
+            	setCursorPosition(cursor_x+1, cursor_y)
+				last_chosen_column_number = cursor_x - left_chrome_width
+			}
         }
 
         // Exiting the loop if 'q' is pressed
@@ -235,7 +258,7 @@ func main() {
             ANSI.clearScreen()
             break
         }
+
     }
 }
-
 
