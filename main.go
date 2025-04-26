@@ -199,9 +199,10 @@ func main() {
 
         if buf[0] == motions.cursor_down {
             is_at_viewport_bottom := cursor_y == content_area_max_y
+			is_at_content_bottom := cursor_y - top_chrome_height + 1 >= len(buffer.lines)
             can_scroll := buffer.top_visible_line_idx + content_area_row_count + 1 < len(buffer.lines)
 
-            if !is_at_viewport_bottom {
+            if !is_at_viewport_bottom && !is_at_content_bottom {
                 setCursorPosition(cursor_x, cursor_y+1)
             } else if can_scroll {
                 buffer.top_visible_line_idx += 1
