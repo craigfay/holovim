@@ -95,7 +95,7 @@ func main() {
     defer ANSI.setCursorPosition(0, 0)
     defer term.Restore(int(os.Stdin.Fd()), oldState)
 
-    term_height, term_width, err := ANSI.getTerminalSize()
+    term_height, _, err := ANSI.getTerminalSize()
 
     if err != nil {
         panic(err)
@@ -117,9 +117,6 @@ func main() {
 
     // The minimum allowed cursor_x position inside of the content area
     content_area_min_x := left_chrome_width
-
-    // The maximum allowed cursor_x position inside of the content area
-    content_area_max_x := term_width
 
     top_chrome_content := []string{
         "Press \"q\" to exit...",
@@ -189,6 +186,7 @@ func main() {
 		column_number := cursor_x - left_chrome_width
 		line_length := len(buffer.lines[line_number])
 		is_at_end_of_line := column_number + 1 >= line_length
+		is_last_line := line_number == len(buffer.lines) - 1
 
 		highest_column_number_on_line := max(line_length - 1, 0)
 
@@ -205,7 +203,13 @@ func main() {
 			continue
 		}
 
-		if last_chosen_column_number == 0 {
+		// Interpreting 9999 as a "magic" number, which indicates
+		// that the user moved the cursor left and wrapped around
+		// to the end of the previous line. The reason for this is
+		// that it prevents the cursor movement logic from having
+		// to know the length of the previous line.
+		if last_chosen_column_number == 9999 {
+			last_chosen_column_number = line_length - 1
 		}
 
         // Reading a single byte from stdin into the buffer
@@ -241,13 +245,25 @@ func main() {
             }
         }
 
-        if buf[0] == motions.cursor_left && cursor_x-1 >= content_area_min_x {
-            setCursorPosition(cursor_x-1, cursor_y)
-			last_chosen_column_number = cursor_x - left_chrome_width
+        if buf[0] == motions.cursor_left {
+			if column_number == 0 && line_number != 0 {
+				// wrapping to the end of previous line
+            	setCursorPosition(9999, cursor_y-1)
+				last_chosen_column_number = 9999;
+			} else if column_number != 0 {
+				// moving the cursor left
+            	setCursorPosition(cursor_x-1, cursor_y)
+				last_chosen_column_number = cursor_x - left_chrome_width
+			}
         }
 
-        if buf[0] == motions.cursor_right && cursor_x+1 <= content_area_max_x {
-			if !is_at_end_of_line {
+        if buf[0] == motions.cursor_right {
+			if is_at_end_of_line && !is_last_line {
+				// wrapping to the beginning of the next line
+            	setCursorPosition(content_area_min_x, cursor_y+1)
+				last_chosen_column_number = 0
+			} else {
+				// moving the cursor right
             	setCursorPosition(cursor_x+1, cursor_y)
 				last_chosen_column_number = cursor_x - left_chrome_width
 			}
