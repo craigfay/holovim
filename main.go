@@ -49,8 +49,9 @@ type ProgramState struct {
 }
 
 type Settings struct {
-	tabstop int
-	tabchar string
+	tabstop           int
+	tabchar           string
+	cursor_x_overflow bool
 }
 
 func getLogger(filename string) func(string) error {
@@ -136,8 +137,9 @@ func main() {
 	s := ProgramState{}
 
 	settings := Settings{
-		tabstop: 4,
-		tabchar: "›", // (U+203A)
+		tabstop:           4,
+		tabchar:           "›", // (U+203A)
+		cursor_x_overflow: true,
 	}
 
 	s.motions = Motions{
@@ -400,8 +402,11 @@ func main() {
 		}
 
 		if buf[0] == s.motions.cursor_left {
+			// Wrapping to the end of the previous line
 			if column_number == 0 && line_number != 0 {
-				// Wrapping to the end of the previous line
+				if !settings.cursor_x_overflow {
+					continue
+				}
 				prevLine := buffer.lines[line_number-1]
 				newLogicalX := max(len(prevLine)-1, 0)
 				newVisualX := s.left_chrome_width
@@ -451,6 +456,10 @@ func main() {
 
 			// wrapping to the beginning of the next line
 			if is_at_end_of_line && !is_last_line {
+				if !settings.cursor_x_overflow {
+					continue
+				}
+
 				newVisualY := s.visualCursorY + 1
 
 				// scrolling if necessary
@@ -511,7 +520,7 @@ func replaceTabsWithSpaces(line string, tabWidth int, tabchar string) string {
 }
 
 func assert(condition bool, message string) {
-    if !condition {
-        panic(message)
-    }
+	if !condition {
+		panic(message)
+	}
 }
