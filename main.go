@@ -93,7 +93,7 @@ func getLogger(filename string) func(string) error {
 func main() {
 	args := os.Args
 
-	logger := getLogger("./logfile.log.txt")
+	_ = getLogger("./logfile.log.txt")
 
 	// In development, a workaround is necessary to pass arguments
 	// that end in ".go", because the go compiler thinks they are part
@@ -310,12 +310,10 @@ func main() {
 				// exceed the previous visualCursorX
 				for {
 					if newLogicalX+1 >= len(nextLine) {
-						logger(">= len nextline")
 						break
 					}
 
 					if newVisualX >= targetVisualCursorX {
-						logger("> visualCursorX")
 						break
 					}
 
@@ -330,14 +328,11 @@ func main() {
 					}
 
 					if newVisualX+visualXChunk > targetVisualCursorX {
-						logger(fmt.Sprintf("chunk overflows: newVisualX: %d, visualXChunk: %d, visualCursorY: %d", newVisualX, visualXChunk, s.visualCursorX))
 						break
 					}
 
 					newVisualX += visualXChunk
 					newLogicalX += 1
-
-					logger(fmt.Sprintf("newVisualX: %d", newVisualX))
 				}
 
 				newVisualY := s.visualCursorY + 1
