@@ -23,23 +23,29 @@ type Motions struct {
 }
 
 type ProgramState struct {
-	buffers              []Buffer
-	motions              Motions
-	active_buffer_idx    int
-	needs_redraw         bool
-	term_height          int
-	top_chrome_content   []string
-	top_chrome_height    int
-	left_chrome_width    int
-	bottom_chrome_height int
-	visualCursorY        int
-	visualCursorX        int
-	lastVisualCursorY    int
-	lastVisualCursorX    int
-	logicalCursorX       int
-	logicalCursorY       int
-	lastLogicalCursorX   int
-	lastLogicalCursorY   int
+	buffers                []Buffer
+	motions                Motions
+	active_buffer_idx      int
+	needs_redraw           bool
+	term_height            int
+	top_chrome_content     []string
+	top_chrome_height      int
+	left_chrome_width      int
+	bottom_chrome_height   int
+	visualCursorY          int
+	visualCursorX          int
+	lastVisualCursorY      int
+	lastVisualCursorX      int
+	logicalCursorX         int
+	logicalCursorY         int
+	lastLogicalCursorX     int
+	lastLogicalCursorY     int
+	// Represents the last visual cursor x that the user
+	// has selected. When they move up and down to a line
+	// that is shorter than the last one, the visual cursor
+	// will change, but we want to restore it whenever moving
+	// to a line that does have enough characters.
+	bookmarkedVisualCursorX int
 }
 
 func getLogger(filename string) func(string) error {
@@ -334,7 +340,6 @@ func main() {
 		}
 
 		if buf[0] == s.motions.cursor_down {
-
 			can_scroll := buffer.top_visible_line_idx+content_area_row_count+1 < len(buffer.lines)
 
 			if !is_at_content_bottom || can_scroll {
@@ -342,6 +347,8 @@ func main() {
 				nextLine := buffer.lines[s.logicalCursorY+1]
 				newLogicalX := 0
 				newVisualX := s.left_chrome_width
+
+				targetVisualCursorX := max(s.visualCursorX, s.bookmarkedVisualCursorX)
 
 				// Incrementing newLogicalX until another increment would
 				// exceed the previous visualCursorX
@@ -351,7 +358,7 @@ func main() {
 						break
 					}
 
-					if newVisualX >= s.visualCursorX {
+					if newVisualX >= targetVisualCursorX {
 						logger("> visualCursorX")
 						break
 					}
@@ -366,7 +373,7 @@ func main() {
 						visualXChunk += 1
 					}
 
-					if newVisualX+visualXChunk > s.visualCursorX {
+					if newVisualX+visualXChunk > targetVisualCursorX {
 						logger(fmt.Sprintf("chunk overflows: newVisualX: %d, visualXChunk: %d, visualCursorY: %d", newVisualX, visualXChunk, s.visualCursorX))
 						break
 					}
@@ -377,7 +384,7 @@ func main() {
 					logger(fmt.Sprintf("newVisualX: %d", newVisualX))
 				}
 
-				newVisualY := s.visualCursorY+1
+				newVisualY := s.visualCursorY + 1
 
 				// Scrolling if necessary
 				if is_at_viewport_bottom {
@@ -398,12 +405,14 @@ func main() {
 				newLogicalX := 0
 				newVisualX := s.left_chrome_width
 
+				targetVisualCursorX := max(s.visualCursorX, s.bookmarkedVisualCursorX)
+
 				for {
 					if newLogicalX+1 >= len(prevLine) {
 						break
 					}
 
-					if newVisualX >= s.visualCursorX {
+					if newVisualX >= targetVisualCursorX {
 						break
 					}
 
@@ -416,7 +425,7 @@ func main() {
 						visualXChunk += 1
 					}
 
-					if newVisualX+visualXChunk > s.visualCursorX {
+					if newVisualX+visualXChunk > targetVisualCursorX {
 						break
 					}
 
@@ -452,7 +461,7 @@ func main() {
 					}
 				}
 
-				newVisualY := s.visualCursorY-1
+				newVisualY := s.visualCursorY - 1
 
 				// Scrolling if necessary
 				if s.visualCursorY == s.top_chrome_height {
@@ -462,6 +471,8 @@ func main() {
 
 				setLogicalCursorPosition(newLogicalX, line_number-1)
 				setVisualCursorPosition(newVisualX, newVisualY)
+				s.bookmarkedVisualCursorX = newVisualX
+
 			} else if column_number != 0 {
 				// Moving the cursor left within the current line
 				thisChar := (*line_content)[column_number-1]
@@ -475,9 +486,9 @@ func main() {
 
 				setLogicalCursorPosition(column_number-1, line_number)
 				setVisualCursorPosition(newVisualX, s.visualCursorY)
+				s.bookmarkedVisualCursorX = newVisualX
 			}
 		}
-
 
 		if buf[0] == s.motions.cursor_right {
 			if is_at_end_of_line && is_last_line {
@@ -486,7 +497,7 @@ func main() {
 
 			// wrapping to the beginning of the next line
 			if is_at_end_of_line && !is_last_line {
-				newVisualY := s.visualCursorY+1
+				newVisualY := s.visualCursorY + 1
 
 				// scrolling if necessary
 				if is_at_viewport_bottom {
@@ -496,8 +507,9 @@ func main() {
 
 				setLogicalCursorPosition(0, s.logicalCursorY+1)
 				setVisualCursorPosition(s.left_chrome_width, newVisualY)
+				s.bookmarkedVisualCursorX = s.left_chrome_width
 
-			// moving the cursor right
+				// moving the cursor right
 			} else {
 				thisChar := (*line_content)[s.logicalCursorX]
 				newVisualX := s.visualCursorX
@@ -510,6 +522,7 @@ func main() {
 
 				setLogicalCursorPosition(s.logicalCursorX+1, s.logicalCursorY)
 				setVisualCursorPosition(newVisualX, s.visualCursorY)
+				s.bookmarkedVisualCursorX = newVisualX
 			}
 		}
 
