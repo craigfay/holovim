@@ -1,4 +1,4 @@
-module craigfay/swim
+module craigfay/mechavim
 
 go 1.24.2
 
