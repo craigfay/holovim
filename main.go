@@ -10,8 +10,8 @@ import (
 )
 
 type Buffer struct {
-	filepath             string
-	lines                []string
+	filepath          string
+	lines             []string
 	topVisibleLineIdx int
 }
 
@@ -23,23 +23,23 @@ type Motions struct {
 }
 
 type ProgramState struct {
-	buffers              []Buffer
-	motions              Motions
+	buffers            []Buffer
+	motions            Motions
 	activeBufferIdx    int
-	needsRedraw         bool
-	termHeight          int
+	needsRedraw        bool
+	termHeight         int
 	topChromeContent   []string
 	topChromeHeight    int
 	leftChromeWidth    int
 	bottomChromeHeight int
-	visualCursorY        int
-	visualCursorX        int
-	lastVisualCursorY    int
-	lastVisualCursorX    int
-	logicalCursorX       int
-	logicalCursorY       int
-	lastLogicalCursorX   int
-	lastLogicalCursorY   int
+	visualCursorY      int
+	visualCursorX      int
+	lastVisualCursorY  int
+	lastVisualCursorX  int
+	logicalCursorX     int
+	logicalCursorY     int
+	lastLogicalCursorX int
+	lastLogicalCursorY int
 	// Represents the last visual cursor x that the user
 	// has selected. When they move up and down to a line
 	// that is shorter than the last one, the visual cursor
@@ -153,8 +153,8 @@ func main() {
 
 	s.buffers = []Buffer{
 		{
-			filepath:             filename,
-			lines:                lines,
+			filepath:          filename,
+			lines:             lines,
 			topVisibleLineIdx: 0,
 		},
 	}
