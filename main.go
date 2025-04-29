@@ -12,7 +12,7 @@ import (
 type Buffer struct {
 	filepath             string
 	lines                []string
-	top_visible_line_idx int
+	topVisibleLineIdx int
 }
 
 type Motions struct {
@@ -25,13 +25,13 @@ type Motions struct {
 type ProgramState struct {
 	buffers              []Buffer
 	motions              Motions
-	active_buffer_idx    int
-	needs_redraw         bool
-	term_height          int
-	top_chrome_content   []string
-	top_chrome_height    int
-	left_chrome_width    int
-	bottom_chrome_height int
+	activeBufferIdx    int
+	needsRedraw         bool
+	termHeight          int
+	topChromeContent   []string
+	topChromeHeight    int
+	leftChromeWidth    int
+	bottomChromeHeight int
 	visualCursorY        int
 	visualCursorX        int
 	lastVisualCursorY    int
@@ -155,11 +155,11 @@ func main() {
 		{
 			filepath:             filename,
 			lines:                lines,
-			top_visible_line_idx: 0,
+			topVisibleLineIdx: 0,
 		},
 	}
 
-	s.active_buffer_idx = 0
+	s.activeBufferIdx = 0
 
 	// Saving the current state of the terminal,
 	// and re-loading it when this program exits
@@ -174,27 +174,27 @@ func main() {
 	defer ANSI.setCursorPosition(0, 0)
 	defer term.Restore(int(os.Stdin.Fd()), oldTerminalState)
 
-	term_height, _, err := ANSI.getTerminalSize()
-	s.term_height = term_height
+	termHeight, _, err := ANSI.getTerminalSize()
+	s.termHeight = termHeight
 
 	if err != nil {
 		panic(err)
 	}
 
-	s.top_chrome_height = 1
-	s.bottom_chrome_height = 1
+	s.topChromeHeight = 1
+	s.bottomChromeHeight = 1
 
 	// 3 columns for line numbers, 2 columns for padding
-	s.left_chrome_width = 5
+	s.leftChromeWidth = 5
 
-	content_area_row_count := s.term_height - s.top_chrome_height - s.bottom_chrome_height
+	contentAreaRowCount := s.termHeight - s.topChromeHeight - s.bottomChromeHeight
 
 	// The maximum allowed cursor_y position inside of the content area
-	content_area_max_y := s.term_height - s.bottom_chrome_height
+	contentAreaMaxY := s.termHeight - s.bottomChromeHeight
 
 	// The minimum allowed cursor_x position inside of the content area
 
-	s.top_chrome_content = []string{
+	s.topChromeContent = []string{
 		"Press \"q\" to exit...",
 	}
 
@@ -206,8 +206,8 @@ func main() {
 	s.lastLogicalCursorY = 0
 
 	// Visual cursor position
-	s.visualCursorX = s.left_chrome_width
-	s.visualCursorY = s.top_chrome_height
+	s.visualCursorX = s.leftChromeWidth
+	s.visualCursorY = s.topChromeHeight
 
 	s.lastVisualCursorX = s.visualCursorX
 	s.lastVisualCursorY = s.visualCursorY
@@ -222,7 +222,7 @@ func main() {
 		s.lastVisualCursorY = s.visualCursorY
 		s.visualCursorX = x
 		s.visualCursorY = y
-		s.needs_redraw = true
+		s.needsRedraw = true
 	}
 
 	setLogicalCursorPosition := func(x, y int) {
@@ -230,61 +230,61 @@ func main() {
 		s.lastLogicalCursorY = s.logicalCursorY
 		s.logicalCursorX = x
 		s.logicalCursorY = y
-		s.needs_redraw = true
+		s.needsRedraw = true
 	}
 
 	// Declaring a buffer to store a single byte of user input at a time
 	buf := make([]byte, 1)
 
-	s.needs_redraw = true
+	s.needsRedraw = true
 
 	ANSI.clearScreen()
 
 	for {
-		buffer := &s.buffers[s.active_buffer_idx]
-		line_number := s.logicalCursorY
-		column_number := s.logicalCursorX
-		line_content := &buffer.lines[line_number]
-		line_length := len(*line_content)
-		is_at_end_of_line := column_number+1 >= line_length
-		is_last_line := line_number == len(buffer.lines)-1
-		is_at_viewport_bottom := s.visualCursorY == content_area_max_y
-		is_at_content_bottom := s.logicalCursorY+1 >= len(buffer.lines)
+		buffer := &s.buffers[s.activeBufferIdx]
+		lineNumber := s.logicalCursorY
+		columnNumber := s.logicalCursorX
+		lineContent := &buffer.lines[lineNumber]
+		lineLength := len(*lineContent)
+		isAtEndOfLine := columnNumber+1 >= lineLength
+		isLastLine := lineNumber == len(buffer.lines)-1
+		isAtViewportBottom := s.visualCursorY == contentAreaMaxY
+		isAtContentBottom := s.logicalCursorY+1 >= len(buffer.lines)
 
-		if true || s.needs_redraw {
-			pre_draw_cursor_x := s.visualCursorX
-			pre_draw_cursor_y := s.visualCursorY
+		if true || s.needsRedraw {
+			preDrawCursorX := s.visualCursorX
+			preDrawCursorY := s.visualCursorY
 
 			ANSI.clearScreen()
 			setVisualCursorPosition(0, 0)
 
 			// Printing top chrome content
-			for i := 0; i < s.top_chrome_height; i++ {
-				line := s.top_chrome_content[i]
+			for i := 0; i < s.topChromeHeight; i++ {
+				line := s.topChromeContent[i]
 
 				fmt.Printf("%s", line)
-				setVisualCursorPosition(s.left_chrome_width, s.visualCursorY+1)
+				setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 			}
 
 			// Printing main buffer content
-			for i := 0; i <= content_area_row_count; i++ {
-				line_idx := i + buffer.top_visible_line_idx
+			for i := 0; i <= contentAreaRowCount; i++ {
+				lineIdx := i + buffer.topVisibleLineIdx
 
 				// Stopping if about to try to draw a line that doesn't exist
-				if line_idx >= len(buffer.lines) {
+				if lineIdx >= len(buffer.lines) {
 					break
 				}
 
-				line := buffer.lines[line_idx]
+				line := buffer.lines[lineIdx]
 				line = replaceTabsWithSpaces(line, settings.tabstop, settings.tabchar)
 
 				fmt.Printf("%s", line)
-				setVisualCursorPosition(s.left_chrome_width, s.visualCursorY+1)
+				setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 			}
 
 			// Resetting state after re-draw
-			setVisualCursorPosition(pre_draw_cursor_x, pre_draw_cursor_y)
-			s.needs_redraw = false
+			setVisualCursorPosition(preDrawCursorX, preDrawCursorY)
+			s.needsRedraw = false
 		}
 
 		// Reading a single byte from stdin into the buffer
@@ -296,13 +296,13 @@ func main() {
 		}
 
 		if buf[0] == s.motions.cursor_down {
-			can_scroll := buffer.top_visible_line_idx+content_area_row_count+1 < len(buffer.lines)
+			canScroll := buffer.topVisibleLineIdx+contentAreaRowCount+1 < len(buffer.lines)
 
-			if !is_at_content_bottom || can_scroll {
+			if !isAtContentBottom || canScroll {
 				// moving the cursor down
 				nextLine := buffer.lines[s.logicalCursorY+1]
 				newLogicalX := 0
-				newVisualX := s.left_chrome_width
+				newVisualX := s.leftChromeWidth
 
 				targetVisualCursorX := max(s.visualCursorX, s.bookmarkedVisualCursorX)
 
@@ -343,8 +343,8 @@ func main() {
 				newVisualY := s.visualCursorY + 1
 
 				// Scrolling if necessary
-				if is_at_viewport_bottom {
-					buffer.top_visible_line_idx += 1
+				if isAtViewportBottom {
+					buffer.topVisibleLineIdx += 1
 					newVisualY = s.visualCursorY
 				}
 
@@ -354,12 +354,12 @@ func main() {
 		}
 
 		if buf[0] == s.motions.cursor_up {
-			can_scroll := buffer.top_visible_line_idx > 0
+			canScroll := buffer.topVisibleLineIdx > 0
 
-			if s.logicalCursorY > 0 || can_scroll {
+			if s.logicalCursorY > 0 || canScroll {
 				prevLine := buffer.lines[s.logicalCursorY-1]
 				newLogicalX := 0
-				newVisualX := s.left_chrome_width
+				newVisualX := s.leftChromeWidth
 
 				targetVisualCursorX := max(s.visualCursorX, s.bookmarkedVisualCursorX)
 
@@ -391,8 +391,8 @@ func main() {
 
 				newVisualY := s.visualCursorY - 1
 
-				if s.visualCursorY == s.top_chrome_height {
-					buffer.top_visible_line_idx -= 1
+				if s.visualCursorY == s.topChromeHeight {
+					buffer.topVisibleLineIdx -= 1
 					newVisualY = s.visualCursorY
 				}
 
@@ -403,13 +403,13 @@ func main() {
 
 		if buf[0] == s.motions.cursor_left {
 			// Wrapping to the end of the previous line
-			if column_number == 0 && line_number != 0 {
+			if columnNumber == 0 && lineNumber != 0 {
 				if !settings.cursor_x_overflow {
 					continue
 				}
-				prevLine := buffer.lines[line_number-1]
+				prevLine := buffer.lines[lineNumber-1]
 				newLogicalX := max(len(prevLine)-1, 0)
-				newVisualX := s.left_chrome_width
+				newVisualX := s.leftChromeWidth
 
 				// Counting the visual columns in the previous line
 				for i := 0; i < len(prevLine)-1; i++ {
@@ -423,18 +423,18 @@ func main() {
 				newVisualY := s.visualCursorY - 1
 
 				// Scrolling if necessary
-				if s.visualCursorY == s.top_chrome_height {
-					buffer.top_visible_line_idx -= 1
+				if s.visualCursorY == s.topChromeHeight {
+					buffer.topVisibleLineIdx -= 1
 					newVisualY = s.visualCursorY
 				}
 
-				setLogicalCursorPosition(newLogicalX, line_number-1)
+				setLogicalCursorPosition(newLogicalX, lineNumber-1)
 				setVisualCursorPosition(newVisualX, newVisualY)
 				s.bookmarkedVisualCursorX = newVisualX
 
-			} else if column_number != 0 {
+			} else if columnNumber != 0 {
 				// Moving the cursor left within the current line
-				thisChar := (*line_content)[column_number-1]
+				thisChar := (*lineContent)[columnNumber-1]
 				newVisualX := s.visualCursorX
 
 				if thisChar == '\t' {
@@ -443,19 +443,19 @@ func main() {
 					newVisualX -= 1
 				}
 
-				setLogicalCursorPosition(column_number-1, line_number)
+				setLogicalCursorPosition(columnNumber-1, lineNumber)
 				setVisualCursorPosition(newVisualX, s.visualCursorY)
 				s.bookmarkedVisualCursorX = newVisualX
 			}
 		}
 
 		if buf[0] == s.motions.cursor_right {
-			if is_at_end_of_line && is_last_line {
+			if isAtEndOfLine && isLastLine {
 				continue
 			}
 
 			// wrapping to the beginning of the next line
-			if is_at_end_of_line && !is_last_line {
+			if isAtEndOfLine && !isLastLine {
 				if !settings.cursor_x_overflow {
 					continue
 				}
@@ -463,18 +463,18 @@ func main() {
 				newVisualY := s.visualCursorY + 1
 
 				// scrolling if necessary
-				if is_at_viewport_bottom {
+				if isAtViewportBottom {
 					newVisualY = s.visualCursorY
-					buffer.top_visible_line_idx += 1
+					buffer.topVisibleLineIdx += 1
 				}
 
 				setLogicalCursorPosition(0, s.logicalCursorY+1)
-				setVisualCursorPosition(s.left_chrome_width, newVisualY)
-				s.bookmarkedVisualCursorX = s.left_chrome_width
+				setVisualCursorPosition(s.leftChromeWidth, newVisualY)
+				s.bookmarkedVisualCursorX = s.leftChromeWidth
 
 				// moving the cursor right
 			} else {
-				thisChar := (*line_content)[s.logicalCursorX]
+				thisChar := (*lineContent)[s.logicalCursorX]
 				newVisualX := s.visualCursorX
 
 				if thisChar == '\t' {
@@ -495,7 +495,7 @@ func main() {
 			break
 		}
 
-		s.needs_redraw = true
+		s.needsRedraw = true
 	}
 }
 
