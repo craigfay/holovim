@@ -393,20 +393,91 @@ func main() {
 		if buf[0] == s.motions.cursor_up {
 			can_scroll := buffer.top_visible_line_idx > 0
 
-			if s.logicalCursorY != 0 {
+			if s.logicalCursorY > 0 || can_scroll {
+				prevLine := buffer.lines[s.logicalCursorY-1]
+				newLogicalX := 0
+				newVisualX := s.left_chrome_width
 
-			} else if can_scroll {
+				for {
+					if newLogicalX+1 >= len(prevLine) {
+						break
+					}
 
+					if newVisualX >= s.visualCursorX {
+						break
+					}
+
+					visualXChunk := 0
+					isTab := prevLine[newLogicalX] == '\t'
+
+					if isTab {
+						visualXChunk += tabstop
+					} else {
+						visualXChunk += 1
+					}
+
+					if newVisualX+visualXChunk > s.visualCursorX {
+						break
+					}
+
+					newVisualX += visualXChunk
+					newLogicalX += 1
+				}
+
+				newVisualY := s.visualCursorY - 1
+
+				if s.visualCursorY == s.top_chrome_height {
+					buffer.top_visible_line_idx -= 1
+					newVisualY = s.visualCursorY
+				}
+
+				setVisualCursorPosition(newVisualX, newVisualY)
+				setLogicalCursorPosition(newLogicalX, s.logicalCursorY-1)
 			}
 		}
 
 		if buf[0] == s.motions.cursor_left {
 			if column_number == 0 && line_number != 0 {
-				// wrapping to the end of previous line
+				// Wrapping to the end of the previous line
+				prevLine := buffer.lines[line_number-1]
+				newLogicalX := max(len(prevLine)-1, 0)
+				newVisualX := s.left_chrome_width
+
+				// Counting the visual columns in the previous line
+				for i := 0; i < len(prevLine)-1; i++ {
+					if prevLine[i] == '\t' {
+						newVisualX += tabstop
+					} else {
+						newVisualX += 1
+					}
+				}
+
+				newVisualY := s.visualCursorY-1
+
+				// Scrolling if necessary
+				if s.visualCursorY == s.top_chrome_height {
+					buffer.top_visible_line_idx -= 1
+					newVisualY = s.visualCursorY
+				}
+
+				setLogicalCursorPosition(newLogicalX, line_number-1)
+				setVisualCursorPosition(newVisualX, newVisualY)
 			} else if column_number != 0 {
-				// moving the cursor left
+				// Moving the cursor left within the current line
+				thisChar := (*line_content)[column_number-1]
+				newVisualX := s.visualCursorX
+
+				if thisChar == '\t' {
+					newVisualX -= tabstop
+				} else {
+					newVisualX -= 1
+				}
+
+				setLogicalCursorPosition(column_number-1, line_number)
+				setVisualCursorPosition(newVisualX, s.visualCursorY)
 			}
 		}
+
 
 		if buf[0] == s.motions.cursor_right {
 			if is_at_end_of_line && is_last_line {
