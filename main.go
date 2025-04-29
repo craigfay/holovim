@@ -50,6 +50,7 @@ type ProgramState struct {
 
 type Settings struct {
 	tabstop int
+	tabchar string
 }
 
 func getLogger(filename string) func(string) error {
@@ -136,6 +137,7 @@ func main() {
 
 	settings := Settings{
 		tabstop: 4,
+		tabchar: "›", // (U+203A)
 	}
 
 	s.motions = Motions{
@@ -272,7 +274,7 @@ func main() {
 				}
 
 				line := buffer.lines[line_idx]
-				line = replaceTabsWithSpaces(line, settings.tabstop)
+				line = replaceTabsWithSpaces(line, settings.tabstop, settings.tabchar)
 
 				fmt.Printf("%s", line)
 				setVisualCursorPosition(s.left_chrome_width, s.visualCursorY+1)
@@ -488,10 +490,28 @@ func main() {
 	}
 }
 
-func replaceTabsWithSpaces(line string, tabWidth int) string {
-	spaces := ""
-	for i := 0; i < tabWidth; i++ {
-		spaces += " "
+func replaceTabsWithSpaces(line string, tabWidth int, tabchar string) string {
+	tabcharLength := len([]rune(tabchar))
+
+	assert(
+		tabcharLength == 1,
+		fmt.Sprintf(
+			"Expected `tabchar` to have length of 1. Actual: %d",
+			tabcharLength,
+		),
+	)
+
+	whitespace := tabchar
+
+	for i := 0; i < tabWidth-1; i++ {
+		whitespace += " "
 	}
-	return strings.ReplaceAll(line, "\t", spaces)
+
+	return strings.ReplaceAll(line, "\t", whitespace)
+}
+
+func assert(condition bool, message string) {
+    if !condition {
+        panic(message)
+    }
 }
