@@ -23,9 +23,23 @@ type Motions struct {
 }
 
 type ProgramState struct {
-	buffers           []Buffer
-	motions           Motions
-	active_buffer_idx int
+	buffers              []Buffer
+	motions              Motions
+	active_buffer_idx    int
+	needs_redraw         bool
+	term_height          int
+	top_chrome_content   []string
+	top_chrome_height    int
+	left_chrome_width    int
+	bottom_chrome_height int
+	visualCursorY        int
+	visualCursorX        int
+	lastVisualCursorY    int
+	lastVisualCursorX    int
+	logicalCursorX       int
+	logicalCursorY       int
+	lastLogicalCursorX   int
+	lastLogicalCursorY   int
 }
 
 func getLogger(filename string) func(string) error {
@@ -131,7 +145,7 @@ func main() {
 
 	// Saving the current state of the terminal,
 	// and re-loading it when this program exits
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	oldTerminalState, err := term.MakeRaw(int(os.Stdin.Fd()))
 
 	if err != nil {
 		panic(err)
@@ -140,84 +154,87 @@ func main() {
 	// Resetting cursor position and terminal state after the program closes.
 	// This isn't exactly true, because we're not resetting it exactly as it was.
 	defer ANSI.setCursorPosition(0, 0)
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
+	defer term.Restore(int(os.Stdin.Fd()), oldTerminalState)
 
 	term_height, _, err := ANSI.getTerminalSize()
+	s.term_height = term_height
 
 	if err != nil {
 		panic(err)
 	}
 
-	top_chrome_height := 1
-	bottom_chrome_height := 1
+	s.top_chrome_height = 1
+	s.bottom_chrome_height = 1
 
 	// 3 columns for line numbers, 2 columns for padding
-	left_chrome_width := 5
+	s.left_chrome_width = 5
 
-	content_area_row_count := term_height - top_chrome_height - bottom_chrome_height
+	content_area_row_count := s.term_height - s.top_chrome_height - s.bottom_chrome_height
 
 	//content_area_min_y := top_chrome_height
 
 	// The maximum allowed cursor_y position inside of the content area
-	content_area_max_y := term_height - bottom_chrome_height
+	content_area_max_y := s.term_height - s.bottom_chrome_height
 
 	// The minimum allowed cursor_x position inside of the content area
 	//content_area_min_x := left_chrome_width
 
-	top_chrome_content := []string{
+	s.top_chrome_content = []string{
 		"Press \"q\" to exit...",
 	}
 
 	// Logical cursor position
-	logicalCursorX := 0
-	logicalCursorY := 0
+	s.logicalCursorX = 0
+	s.logicalCursorY = 0
 
-	lastLogicalCursorX := 0
-	lastLogicalCursorY := 0
+	s.lastLogicalCursorX = 0
+	s.lastLogicalCursorY = 0
 
 	// Visual cursor position
-	visualCursorX := left_chrome_width
-	visualCursorY := top_chrome_height
+	s.visualCursorX = s.left_chrome_width
+	s.visualCursorY = s.top_chrome_height
 
-	lastVisualCursorX := visualCursorX
-	lastVisualCursorY := visualCursorY
+	s.lastVisualCursorX = s.visualCursorX
+	s.lastVisualCursorY = s.visualCursorY
 
-	if lastVisualCursorX == 0 {
-
-	}
-	if lastVisualCursorY == 0 {
+	if s.lastVisualCursorX == 0 {
 
 	}
-	if lastLogicalCursorX == 0 {
+	if s.lastVisualCursorY == 0 {
 
 	}
-	if lastLogicalCursorY == 0 {
+	if s.lastLogicalCursorX == 0 {
+
+	}
+	if s.lastLogicalCursorY == 0 {
 
 	}
 
-	ANSI.setCursorPosition(visualCursorX, visualCursorY)
+	ANSI.setCursorPosition(s.visualCursorX, s.visualCursorY)
 
 	// Adding a helper to deliver ANSI instruction, while
 	// also updating native variables to track the cursor
 	setVisualCursorPosition := func(x, y int) {
 		ANSI.setCursorPosition(x, y)
-		lastVisualCursorX = visualCursorX
-		lastVisualCursorY = visualCursorY
-		visualCursorX = x
-		visualCursorY = y
+		s.lastVisualCursorX = s.visualCursorX
+		s.lastVisualCursorY = s.visualCursorY
+		s.visualCursorX = x
+		s.visualCursorY = y
+		s.needs_redraw = true
 	}
 
 	setLogicalCursorPosition := func(x, y int) {
-		lastLogicalCursorX = logicalCursorX
-		lastLogicalCursorY = logicalCursorY
-		logicalCursorX = x
-		logicalCursorY = y
+		s.lastLogicalCursorX = s.logicalCursorX
+		s.lastLogicalCursorY = s.logicalCursorY
+		s.logicalCursorX = x
+		s.logicalCursorY = y
+		s.needs_redraw = true
 	}
 
 	// Declaring a buffer to store a single byte of user input at a time
 	buf := make([]byte, 1)
 
-	needs_redraw := true
+	s.needs_redraw = true
 
 	last_chosen_column_number := 0
 
@@ -228,8 +245,8 @@ func main() {
 	for {
 		buffer := &s.buffers[s.active_buffer_idx]
 
-		line_number := logicalCursorY
-		column_number := logicalCursorX
+		line_number := s.logicalCursorY
+		column_number := s.logicalCursorX
 		line_content := &buffer.lines[line_number]
 		line_length := len(*line_content)
 		is_at_end_of_line := column_number+1 >= line_length
@@ -251,35 +268,35 @@ func main() {
 
 		//setVisualCursorPosition(newVisualX, newVisualY)
 
-		top_chrome_content = []string{
+		s.top_chrome_content = []string{
 			fmt.Sprintf(
 				"chosen_x: %d, x: %d, y: %d, last_x: %d, last_y: %d, vx: %d, vy: %d, last_vx: %d, last_vy: %d, line_len: %d",
 				last_chosen_column_number,
-				logicalCursorX,
-				logicalCursorY,
-				lastVisualCursorX,
-				lastVisualCursorY,
-				visualCursorX,
-				visualCursorY,
-				lastVisualCursorX,
-				lastVisualCursorY,
+				s.logicalCursorX,
+				s.logicalCursorY,
+				s.lastVisualCursorX,
+				s.lastVisualCursorY,
+				s.visualCursorX,
+				s.visualCursorY,
+				s.lastVisualCursorX,
+				s.lastVisualCursorY,
 				line_length,
 			),
 		}
 
-		if true || needs_redraw {
-			pre_draw_cursor_x := visualCursorX
-			pre_draw_cursor_y := visualCursorY
+		if true || s.needs_redraw {
+			pre_draw_cursor_x := s.visualCursorX
+			pre_draw_cursor_y := s.visualCursorY
 
 			ANSI.clearScreen()
 			setVisualCursorPosition(0, 0)
 
 			// Printing top chrome content
-			for i := 0; i < top_chrome_height; i++ {
-				line := top_chrome_content[i]
+			for i := 0; i < s.top_chrome_height; i++ {
+				line := s.top_chrome_content[i]
 
 				fmt.Printf("%s", line)
-				setVisualCursorPosition(left_chrome_width, visualCursorY+1)
+				setVisualCursorPosition(s.left_chrome_width, s.visualCursorY+1)
 			}
 
 			// Printing main buffer content
@@ -296,12 +313,12 @@ func main() {
 				line = replaceTabsWithSpaces(line, tabstop)
 
 				fmt.Printf("%s", line)
-				setVisualCursorPosition(left_chrome_width, visualCursorY+1)
+				setVisualCursorPosition(s.left_chrome_width, s.visualCursorY+1)
 			}
 
 			// Resetting state after re-draw
 			setVisualCursorPosition(pre_draw_cursor_x, pre_draw_cursor_y)
-			needs_redraw = false
+			s.needs_redraw = false
 		}
 
 		// Reading a single byte from stdin into the buffer
@@ -313,15 +330,15 @@ func main() {
 		}
 
 		if buf[0] == s.motions.cursor_down {
-			is_at_viewport_bottom := visualCursorY == content_area_max_y
-			is_at_content_bottom := logicalCursorY+1 >= len(buffer.lines)
+			is_at_viewport_bottom := s.visualCursorY == content_area_max_y
+			is_at_content_bottom := s.logicalCursorY+1 >= len(buffer.lines)
 			can_scroll := buffer.top_visible_line_idx+content_area_row_count+1 < len(buffer.lines)
 
 			if !is_at_content_bottom || can_scroll {
 				// moving the cursor down
-				nextLine := buffer.lines[logicalCursorY+1]
+				nextLine := buffer.lines[s.logicalCursorY+1]
 				newLogicalX := 0
-				newVisualX := left_chrome_width
+				newVisualX := s.left_chrome_width
 
 				// Incrementing newLogicalX until another increment would
 				// exceed the previous visualCursorX
@@ -331,7 +348,7 @@ func main() {
 						break
 					}
 
-					if newVisualX >= visualCursorX {
+					if newVisualX >= s.visualCursorX {
 						logger("> visualCursorX")
 						break
 					}
@@ -346,8 +363,8 @@ func main() {
 						visualXChunk += 1
 					}
 
-					if newVisualX+visualXChunk > visualCursorX {
-						logger(fmt.Sprintf("chunk overflows: newVisualX: %d, visualXChunk: %d, visualCursorY: %d", newVisualX, visualXChunk, visualCursorX))
+					if newVisualX+visualXChunk > s.visualCursorX {
+						logger(fmt.Sprintf("chunk overflows: newVisualX: %d, visualXChunk: %d, visualCursorY: %d", newVisualX, visualXChunk, s.visualCursorX))
 						break
 					}
 
@@ -357,23 +374,23 @@ func main() {
 					logger(fmt.Sprintf("newVisualX: %d", newVisualX))
 				}
 
-				newVisualY := visualCursorY+1
+				newVisualY := s.visualCursorY+1
 
 				// Scrolling if necessary
 				if is_at_viewport_bottom {
 					buffer.top_visible_line_idx += 1
-					newVisualY = visualCursorY
+					newVisualY = s.visualCursorY
 				}
 
 				setVisualCursorPosition(newVisualX, newVisualY)
-				setLogicalCursorPosition(newLogicalX, logicalCursorY+1)
+				setLogicalCursorPosition(newLogicalX, s.logicalCursorY+1)
 			}
 		}
 
 		if buf[0] == s.motions.cursor_up {
 			can_scroll := buffer.top_visible_line_idx > 0
 
-			if logicalCursorY != 0 {
+			if s.logicalCursorY != 0 {
 
 			} else if can_scroll {
 
@@ -397,8 +414,8 @@ func main() {
 				// wrapping to the beginning of the next line
 			} else {
 				// moving the cursor right
-				thisChar := (*line_content)[logicalCursorX]
-				newVisualX := visualCursorX
+				thisChar := (*line_content)[s.logicalCursorX]
+				newVisualX := s.visualCursorX
 
 				if thisChar == '\t' {
 					newVisualX += tabstop
@@ -406,8 +423,8 @@ func main() {
 					newVisualX += 1
 				}
 
-				setLogicalCursorPosition(logicalCursorX+1, logicalCursorY)
-				setVisualCursorPosition(newVisualX, visualCursorY)
+				setLogicalCursorPosition(s.logicalCursorX+1, s.logicalCursorY)
+				setVisualCursorPosition(newVisualX, s.visualCursorY)
 			}
 		}
 
@@ -417,7 +434,7 @@ func main() {
 			break
 		}
 
-		needs_redraw = true
+		s.needs_redraw = true
 	}
 }
 
