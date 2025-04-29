@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -88,6 +89,25 @@ func getLogger(filename string) func(string) error {
 
 		return nil
 	}
+}
+
+// Adding a helper to deliver ANSI instruction, while
+// also updating native variables to track the cursor
+func (s *ProgramState) setVisualCursorPosition(x, y int) {
+	ANSIInstructions{}.setCursorPosition(x, y)
+	s.lastVisualCursorX = s.visualCursorX
+	s.lastVisualCursorY = s.visualCursorY
+	s.visualCursorX = x
+	s.visualCursorY = y
+	s.needsRedraw = true
+}
+
+func (s *ProgramState) setLogicalCursorPosition(x, y int) {
+	s.lastLogicalCursorX = s.logicalCursorX
+	s.lastLogicalCursorY = s.logicalCursorY
+	s.logicalCursorX = x
+	s.logicalCursorY = y
+	s.needsRedraw = true
 }
 
 func main() {
@@ -188,12 +208,6 @@ func main() {
 	s.leftChromeWidth = 5
 
 	contentAreaRowCount := s.termHeight - s.topChromeHeight - s.bottomChromeHeight
-
-	// The maximum allowed cursor_y position inside of the content area
-	contentAreaMaxY := s.termHeight - s.bottomChromeHeight
-
-	// The minimum allowed cursor_x position inside of the content area
-
 	s.topChromeContent = []string{
 		"Press \"q\" to exit...",
 	}
@@ -214,25 +228,6 @@ func main() {
 
 	ANSI.setCursorPosition(s.visualCursorX, s.visualCursorY)
 
-	// Adding a helper to deliver ANSI instruction, while
-	// also updating native variables to track the cursor
-	setVisualCursorPosition := func(x, y int) {
-		ANSI.setCursorPosition(x, y)
-		s.lastVisualCursorX = s.visualCursorX
-		s.lastVisualCursorY = s.visualCursorY
-		s.visualCursorX = x
-		s.visualCursorY = y
-		s.needsRedraw = true
-	}
-
-	setLogicalCursorPosition := func(x, y int) {
-		s.lastLogicalCursorX = s.logicalCursorX
-		s.lastLogicalCursorY = s.logicalCursorY
-		s.logicalCursorX = x
-		s.logicalCursorY = y
-		s.needsRedraw = true
-	}
-
 	// Declaring a buffer to store a single byte of user input at a time
 	buf := make([]byte, 1)
 
@@ -242,28 +237,20 @@ func main() {
 
 	for {
 		buffer := &s.buffers[s.activeBufferIdx]
-		lineNumber := s.logicalCursorY
-		columnNumber := s.logicalCursorX
-		lineContent := &buffer.lines[lineNumber]
-		lineLength := len(*lineContent)
-		isAtEndOfLine := columnNumber+1 >= lineLength
-		isLastLine := lineNumber == len(buffer.lines)-1
-		isAtViewportBottom := s.visualCursorY == contentAreaMaxY
-		isAtContentBottom := s.logicalCursorY+1 >= len(buffer.lines)
 
 		if true || s.needsRedraw {
 			preDrawCursorX := s.visualCursorX
 			preDrawCursorY := s.visualCursorY
 
 			ANSI.clearScreen()
-			setVisualCursorPosition(0, 0)
+			s.setVisualCursorPosition(0, 0)
 
 			// Printing top chrome content
 			for i := 0; i < s.topChromeHeight; i++ {
 				line := s.topChromeContent[i]
 
 				fmt.Printf("%s", line)
-				setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
+				s.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 			}
 
 			// Printing main buffer content
@@ -279,11 +266,11 @@ func main() {
 				line = replaceTabsWithSpaces(line, settings.tabstop, settings.tabchar)
 
 				fmt.Printf("%s", line)
-				setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
+				s.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 			}
 
 			// Resetting state after re-draw
-			setVisualCursorPosition(preDrawCursorX, preDrawCursorY)
+			s.setVisualCursorPosition(preDrawCursorX, preDrawCursorY)
 			s.needsRedraw = false
 		}
 
@@ -296,192 +283,19 @@ func main() {
 		}
 
 		if buf[0] == s.motions.cursor_down {
-			canScroll := buffer.topVisibleLineIdx+contentAreaRowCount+1 < len(buffer.lines)
-
-			if !isAtContentBottom || canScroll {
-				// moving the cursor down
-				nextLine := buffer.lines[s.logicalCursorY+1]
-				newLogicalX := 0
-				newVisualX := s.leftChromeWidth
-
-				targetVisualCursorX := max(s.visualCursorX, s.bookmarkedVisualCursorX)
-
-				// Incrementing newLogicalX until another increment would
-				// exceed the previous visualCursorX
-				for {
-					if newLogicalX+1 >= len(nextLine) {
-						break
-					}
-
-					if newVisualX >= targetVisualCursorX {
-						break
-					}
-
-					visualXChunk := 0
-
-					isTab := nextLine[newLogicalX] == '\t'
-
-					if isTab {
-						visualXChunk += settings.tabstop
-					} else {
-						visualXChunk += 1
-					}
-
-					if newVisualX+visualXChunk > targetVisualCursorX {
-						break
-					}
-
-					newVisualX += visualXChunk
-					newLogicalX += 1
-				}
-
-				newVisualY := s.visualCursorY + 1
-
-				// Scrolling if necessary
-				if isAtViewportBottom {
-					buffer.topVisibleLineIdx += 1
-					newVisualY = s.visualCursorY
-				}
-
-				setVisualCursorPosition(newVisualX, newVisualY)
-				setLogicalCursorPosition(newLogicalX, s.logicalCursorY+1)
-			}
+			moveCursorDown(&s, &settings)
 		}
 
 		if buf[0] == s.motions.cursor_up {
-			canScroll := buffer.topVisibleLineIdx > 0
-
-			if s.logicalCursorY > 0 || canScroll {
-				prevLine := buffer.lines[s.logicalCursorY-1]
-				newLogicalX := 0
-				newVisualX := s.leftChromeWidth
-
-				targetVisualCursorX := max(s.visualCursorX, s.bookmarkedVisualCursorX)
-
-				for {
-					if newLogicalX+1 >= len(prevLine) {
-						break
-					}
-
-					if newVisualX >= targetVisualCursorX {
-						break
-					}
-
-					visualXChunk := 0
-					isTab := prevLine[newLogicalX] == '\t'
-
-					if isTab {
-						visualXChunk += settings.tabstop
-					} else {
-						visualXChunk += 1
-					}
-
-					if newVisualX+visualXChunk > targetVisualCursorX {
-						break
-					}
-
-					newVisualX += visualXChunk
-					newLogicalX += 1
-				}
-
-				newVisualY := s.visualCursorY - 1
-
-				if s.visualCursorY == s.topChromeHeight {
-					buffer.topVisibleLineIdx -= 1
-					newVisualY = s.visualCursorY
-				}
-
-				setVisualCursorPosition(newVisualX, newVisualY)
-				setLogicalCursorPosition(newLogicalX, s.logicalCursorY-1)
-			}
+			moveCursorUp(&s, &settings)
 		}
 
 		if buf[0] == s.motions.cursor_left {
-			// Wrapping to the end of the previous line
-			if columnNumber == 0 && lineNumber != 0 {
-				if !settings.cursor_x_overflow {
-					continue
-				}
-				prevLine := buffer.lines[lineNumber-1]
-				newLogicalX := max(len(prevLine)-1, 0)
-				newVisualX := s.leftChromeWidth
-
-				// Counting the visual columns in the previous line
-				for i := 0; i < len(prevLine)-1; i++ {
-					if prevLine[i] == '\t' {
-						newVisualX += settings.tabstop
-					} else {
-						newVisualX += 1
-					}
-				}
-
-				newVisualY := s.visualCursorY - 1
-
-				// Scrolling if necessary
-				if s.visualCursorY == s.topChromeHeight {
-					buffer.topVisibleLineIdx -= 1
-					newVisualY = s.visualCursorY
-				}
-
-				setLogicalCursorPosition(newLogicalX, lineNumber-1)
-				setVisualCursorPosition(newVisualX, newVisualY)
-				s.bookmarkedVisualCursorX = newVisualX
-
-			} else if columnNumber != 0 {
-				// Moving the cursor left within the current line
-				thisChar := (*lineContent)[columnNumber-1]
-				newVisualX := s.visualCursorX
-
-				if thisChar == '\t' {
-					newVisualX -= settings.tabstop
-				} else {
-					newVisualX -= 1
-				}
-
-				setLogicalCursorPosition(columnNumber-1, lineNumber)
-				setVisualCursorPosition(newVisualX, s.visualCursorY)
-				s.bookmarkedVisualCursorX = newVisualX
-			}
+			moveCursorLeft(&s, &settings)
 		}
 
 		if buf[0] == s.motions.cursor_right {
-			if isAtEndOfLine && isLastLine {
-				continue
-			}
-
-			// wrapping to the beginning of the next line
-			if isAtEndOfLine && !isLastLine {
-				if !settings.cursor_x_overflow {
-					continue
-				}
-
-				newVisualY := s.visualCursorY + 1
-
-				// scrolling if necessary
-				if isAtViewportBottom {
-					newVisualY = s.visualCursorY
-					buffer.topVisibleLineIdx += 1
-				}
-
-				setLogicalCursorPosition(0, s.logicalCursorY+1)
-				setVisualCursorPosition(s.leftChromeWidth, newVisualY)
-				s.bookmarkedVisualCursorX = s.leftChromeWidth
-
-				// moving the cursor right
-			} else {
-				thisChar := (*lineContent)[s.logicalCursorX]
-				newVisualX := s.visualCursorX
-
-				if thisChar == '\t' {
-					newVisualX += settings.tabstop
-				} else {
-					newVisualX += 1
-				}
-
-				setLogicalCursorPosition(s.logicalCursorX+1, s.logicalCursorY)
-				setVisualCursorPosition(newVisualX, s.visualCursorY)
-				s.bookmarkedVisualCursorX = newVisualX
-			}
+			moveCursorRight(&s, &settings)
 		}
 
 		// Exiting the loop if 'q' is pressed
