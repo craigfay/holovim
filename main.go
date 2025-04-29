@@ -23,29 +23,33 @@ type Motions struct {
 }
 
 type ProgramState struct {
-	buffers                []Buffer
-	motions                Motions
-	active_buffer_idx      int
-	needs_redraw           bool
-	term_height            int
-	top_chrome_content     []string
-	top_chrome_height      int
-	left_chrome_width      int
-	bottom_chrome_height   int
-	visualCursorY          int
-	visualCursorX          int
-	lastVisualCursorY      int
-	lastVisualCursorX      int
-	logicalCursorX         int
-	logicalCursorY         int
-	lastLogicalCursorX     int
-	lastLogicalCursorY     int
+	buffers              []Buffer
+	motions              Motions
+	active_buffer_idx    int
+	needs_redraw         bool
+	term_height          int
+	top_chrome_content   []string
+	top_chrome_height    int
+	left_chrome_width    int
+	bottom_chrome_height int
+	visualCursorY        int
+	visualCursorX        int
+	lastVisualCursorY    int
+	lastVisualCursorX    int
+	logicalCursorX       int
+	logicalCursorY       int
+	lastLogicalCursorX   int
+	lastLogicalCursorY   int
 	// Represents the last visual cursor x that the user
 	// has selected. When they move up and down to a line
 	// that is shorter than the last one, the visual cursor
 	// will change, but we want to restore it whenever moving
 	// to a line that does have enough characters.
 	bookmarkedVisualCursorX int
+}
+
+type Settings struct {
+	tabstop int
 }
 
 func getLogger(filename string) func(string) error {
@@ -130,6 +134,10 @@ func main() {
 
 	s := ProgramState{}
 
+	settings := Settings{
+		tabstop: 4,
+	}
+
 	s.motions = Motions{
 		cursor_up:    'k',
 		cursor_down:  'j',
@@ -177,13 +185,10 @@ func main() {
 
 	content_area_row_count := s.term_height - s.top_chrome_height - s.bottom_chrome_height
 
-	//content_area_min_y := top_chrome_height
-
 	// The maximum allowed cursor_y position inside of the content area
 	content_area_max_y := s.term_height - s.bottom_chrome_height
 
 	// The minimum allowed cursor_x position inside of the content area
-	//content_area_min_x := left_chrome_width
 
 	s.top_chrome_content = []string{
 		"Press \"q\" to exit...",
@@ -202,19 +207,6 @@ func main() {
 
 	s.lastVisualCursorX = s.visualCursorX
 	s.lastVisualCursorY = s.visualCursorY
-
-	if s.lastVisualCursorX == 0 {
-
-	}
-	if s.lastVisualCursorY == 0 {
-
-	}
-	if s.lastLogicalCursorX == 0 {
-
-	}
-	if s.lastLogicalCursorY == 0 {
-
-	}
 
 	ANSI.setCursorPosition(s.visualCursorX, s.visualCursorY)
 
@@ -242,57 +234,18 @@ func main() {
 
 	s.needs_redraw = true
 
-	last_chosen_column_number := 0
-
 	ANSI.clearScreen()
-
-	tabstop := 4
 
 	for {
 		buffer := &s.buffers[s.active_buffer_idx]
-
 		line_number := s.logicalCursorY
 		column_number := s.logicalCursorX
 		line_content := &buffer.lines[line_number]
 		line_length := len(*line_content)
 		is_at_end_of_line := column_number+1 >= line_length
 		is_last_line := line_number == len(buffer.lines)-1
-
 		is_at_viewport_bottom := s.visualCursorY == content_area_max_y
 		is_at_content_bottom := s.logicalCursorY+1 >= len(buffer.lines)
-
-		//highest_column_number_on_line := max(line_length-1, 0)
-
-		//newVisualX := left_chrome_width
-		//newVisualY := top_chrome_height + logicalCursorY
-
-		//if logicalCursorX != 0 {
-		//	for i := 0; i < logicalCursorX; i++ {
-		//		if (*line_content)[i] == '\t' {
-		//			newVisualX += tabstop
-		//		} else {
-		//			newVisualX += 1
-		//		}
-		//	}
-		//}
-
-		//setVisualCursorPosition(newVisualX, newVisualY)
-
-		s.top_chrome_content = []string{
-			fmt.Sprintf(
-				"chosen_x: %d, x: %d, y: %d, last_x: %d, last_y: %d, vx: %d, vy: %d, last_vx: %d, last_vy: %d, line_len: %d",
-				last_chosen_column_number,
-				s.logicalCursorX,
-				s.logicalCursorY,
-				s.lastVisualCursorX,
-				s.lastVisualCursorY,
-				s.visualCursorX,
-				s.visualCursorY,
-				s.lastVisualCursorX,
-				s.lastVisualCursorY,
-				line_length,
-			),
-		}
 
 		if true || s.needs_redraw {
 			pre_draw_cursor_x := s.visualCursorX
@@ -313,14 +266,13 @@ func main() {
 			for i := 0; i <= content_area_row_count; i++ {
 				line_idx := i + buffer.top_visible_line_idx
 
-				// Stopping if about to try to draw a line
-				// that doesn't exist
+				// Stopping if about to try to draw a line that doesn't exist
 				if line_idx >= len(buffer.lines) {
 					break
 				}
 
 				line := buffer.lines[line_idx]
-				line = replaceTabsWithSpaces(line, tabstop)
+				line = replaceTabsWithSpaces(line, settings.tabstop)
 
 				fmt.Printf("%s", line)
 				setVisualCursorPosition(s.left_chrome_width, s.visualCursorY+1)
@@ -368,7 +320,7 @@ func main() {
 					isTab := nextLine[newLogicalX] == '\t'
 
 					if isTab {
-						visualXChunk += tabstop
+						visualXChunk += settings.tabstop
 					} else {
 						visualXChunk += 1
 					}
@@ -420,7 +372,7 @@ func main() {
 					isTab := prevLine[newLogicalX] == '\t'
 
 					if isTab {
-						visualXChunk += tabstop
+						visualXChunk += settings.tabstop
 					} else {
 						visualXChunk += 1
 					}
@@ -455,7 +407,7 @@ func main() {
 				// Counting the visual columns in the previous line
 				for i := 0; i < len(prevLine)-1; i++ {
 					if prevLine[i] == '\t' {
-						newVisualX += tabstop
+						newVisualX += settings.tabstop
 					} else {
 						newVisualX += 1
 					}
@@ -479,7 +431,7 @@ func main() {
 				newVisualX := s.visualCursorX
 
 				if thisChar == '\t' {
-					newVisualX -= tabstop
+					newVisualX -= settings.tabstop
 				} else {
 					newVisualX -= 1
 				}
@@ -515,7 +467,7 @@ func main() {
 				newVisualX := s.visualCursorX
 
 				if thisChar == '\t' {
-					newVisualX += tabstop
+					newVisualX += settings.tabstop
 				} else {
 					newVisualX += 1
 				}
