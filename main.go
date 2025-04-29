@@ -251,6 +251,10 @@ func main() {
 		line_length := len(*line_content)
 		is_at_end_of_line := column_number+1 >= line_length
 		is_last_line := line_number == len(buffer.lines)-1
+
+		is_at_viewport_bottom := s.visualCursorY == content_area_max_y
+		is_at_content_bottom := s.logicalCursorY+1 >= len(buffer.lines)
+
 		//highest_column_number_on_line := max(line_length-1, 0)
 
 		//newVisualX := left_chrome_width
@@ -330,8 +334,7 @@ func main() {
 		}
 
 		if buf[0] == s.motions.cursor_down {
-			is_at_viewport_bottom := s.visualCursorY == content_area_max_y
-			is_at_content_bottom := s.logicalCursorY+1 >= len(buffer.lines)
+
 			can_scroll := buffer.top_visible_line_idx+content_area_row_count+1 < len(buffer.lines)
 
 			if !is_at_content_bottom || can_scroll {
@@ -410,10 +413,21 @@ func main() {
 				continue
 			}
 
+			// wrapping to the beginning of the next line
 			if is_at_end_of_line && !is_last_line {
-				// wrapping to the beginning of the next line
+				newVisualY := s.visualCursorY+1
+
+				// scrolling if necessary
+				if is_at_viewport_bottom {
+					newVisualY = s.visualCursorY
+					buffer.top_visible_line_idx += 1
+				}
+
+				setLogicalCursorPosition(0, s.logicalCursorY+1)
+				setVisualCursorPosition(s.left_chrome_width, newVisualY)
+
+			// moving the cursor right
 			} else {
-				// moving the cursor right
 				thisChar := (*line_content)[s.logicalCursorX]
 				newVisualX := s.visualCursorX
 
