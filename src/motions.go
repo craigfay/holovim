@@ -1,4 +1,3 @@
-
 package main
 
 func moveCursorDown(s *ProgramState, settings *Settings) {
@@ -206,4 +205,3 @@ func moveCursorRight(s *ProgramState, settings *Settings) {
 		s.bookmarkedVisualCursorX = newVisualX
 	}
 }
-

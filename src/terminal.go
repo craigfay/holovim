@@ -86,4 +86,3 @@ func (ANSI) getSize() (rows, cols int, err error) {
 
 	return w, h, nil
 }
-

@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -49,7 +48,7 @@ func main() {
 
 		handleUserInput(buf[0], &s, &settings)
 
-		if (s.shouldExit) {
+		if s.shouldExit {
 			return
 		}
 	}
@@ -180,5 +179,3 @@ func getLogger(filename string) func(string) error {
 		return nil
 	}
 }
-
-

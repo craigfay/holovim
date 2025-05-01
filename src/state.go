@@ -1,6 +1,4 @@
-
 package main
-
 
 import (
 	"bufio"
@@ -172,5 +170,3 @@ func initializeState(settings *Settings) (s ProgramState) {
 
 	return s
 }
-
-
