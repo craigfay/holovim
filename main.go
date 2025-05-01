@@ -205,7 +205,6 @@ func main() {
 	// 3 columns for line numbers, 2 columns for padding
 	s.leftChromeWidth = 5
 
-	contentAreaRowCount := s.termHeight - s.topChromeHeight - s.bottomChromeHeight
 	s.topChromeContent = []string{
 		"Press \"q\" to exit...",
 	}
@@ -234,42 +233,8 @@ func main() {
 	ANSI{}.clearScreen()
 
 	for {
-		buffer := &s.buffers[s.activeBufferIdx]
-
 		if true || s.needsRedraw {
-			preDrawCursorX := s.visualCursorX
-			preDrawCursorY := s.visualCursorY
-
-			ANSI{}.clearScreen()
-			s.setVisualCursorPosition(0, 0)
-
-			// Printing top chrome content
-			for i := 0; i < s.topChromeHeight; i++ {
-				line := s.topChromeContent[i]
-
-				fmt.Printf("%s", line)
-				s.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
-			}
-
-			// Printing main buffer content
-			for i := 0; i <= contentAreaRowCount; i++ {
-				lineIdx := i + buffer.topVisibleLineIdx
-
-				// Stopping if about to try to draw a line that doesn't exist
-				if lineIdx >= len(buffer.lines) {
-					break
-				}
-
-				line := buffer.lines[lineIdx]
-				line = replaceTabsWithSpaces(line, settings.tabstop, settings.tabchar)
-
-				fmt.Printf("%s", line)
-				s.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
-			}
-
-			// Resetting state after re-draw
-			s.setVisualCursorPosition(preDrawCursorX, preDrawCursorY)
-			s.needsRedraw = false
+			redraw(&s, &settings)
 		}
 
 		// Reading a single byte from stdin into the buffer
@@ -304,6 +269,46 @@ func main() {
 
 		s.needsRedraw = true
 	}
+}
+
+func redraw(s *ProgramState, settings *Settings) {
+	contentAreaRowCount := s.termHeight - s.topChromeHeight - s.bottomChromeHeight
+	buffer := &s.buffers[s.activeBufferIdx]
+
+	preDrawCursorX := s.visualCursorX
+	preDrawCursorY := s.visualCursorY
+
+	ANSI{}.clearScreen()
+	s.setVisualCursorPosition(0, 0)
+
+	// Printing top chrome content
+	for i := 0; i < s.topChromeHeight; i++ {
+		line := s.topChromeContent[i]
+
+		fmt.Printf("%s", line)
+		s.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
+	}
+
+	// Printing main buffer content
+	for i := 0; i <= contentAreaRowCount; i++ {
+		lineIdx := i + buffer.topVisibleLineIdx
+
+		// Stopping if about to try to draw a line that doesn't exist
+		if lineIdx >= len(buffer.lines) {
+			break
+		}
+
+		line := buffer.lines[lineIdx]
+		line = replaceTabsWithSpaces(line, settings.tabstop, settings.tabchar)
+
+		fmt.Printf("%s", line)
+		s.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
+	}
+
+	// Resetting state after re-draw
+	s.setVisualCursorPosition(preDrawCursorX, preDrawCursorY)
+	s.needsRedraw = false
+
 }
 
 func replaceTabsWithSpaces(line string, tabWidth int, tabchar string) string {
