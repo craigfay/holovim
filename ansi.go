@@ -7,6 +7,13 @@ import (
 	"strings"
 )
 
+type Terminal interface {
+	clearScreen()
+	setCursorPosition(x, y int)
+	getCursorPosition() (x, y int, err error)
+	getSize() (rows, cols int, err error)
+}
+
 type ANSI struct{}
 
 func (ANSI) clearScreen() {
@@ -59,7 +66,7 @@ func (ANSI) getCursorPosition() (x, y int, err error) {
 	return rows, cols, nil
 }
 
-func (ANSI) getTerminalSize() (rows, cols int, err error) {
+func (ANSI) getSize() (rows, cols int, err error) {
 	last_x, last_y, err := ANSI{}.getCursorPosition()
 
 	if err != nil {
