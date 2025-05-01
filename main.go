@@ -94,7 +94,7 @@ func getLogger(filename string) func(string) error {
 // Adding a helper to deliver ANSI instruction, while
 // also updating native variables to track the cursor
 func (s *ProgramState) setVisualCursorPosition(x, y int) {
-	ANSIInstructions{}.setCursorPosition(x, y)
+	ANSI{}.setCursorPosition(x, y)
 	s.lastVisualCursorX = s.visualCursorX
 	s.lastVisualCursorY = s.visualCursorY
 	s.visualCursorX = x
@@ -169,8 +169,6 @@ func main() {
 		cursor_right: 'l',
 	}
 
-	ANSI := ANSIInstructions{}
-
 	s.buffers = []Buffer{
 		{
 			filepath:          filename,
@@ -191,10 +189,10 @@ func main() {
 
 	// Resetting cursor position and terminal state after the program closes.
 	// This isn't exactly true, because we're not resetting it exactly as it was.
-	defer ANSI.setCursorPosition(0, 0)
+	defer ANSI{}.setCursorPosition(0, 0)
 	defer term.Restore(int(os.Stdin.Fd()), oldTerminalState)
 
-	termHeight, _, err := ANSI.getTerminalSize()
+	termHeight, _, err := ANSI{}.getTerminalSize()
 	s.termHeight = termHeight
 
 	if err != nil {
@@ -226,14 +224,14 @@ func main() {
 	s.lastVisualCursorX = s.visualCursorX
 	s.lastVisualCursorY = s.visualCursorY
 
-	ANSI.setCursorPosition(s.visualCursorX, s.visualCursorY)
+	ANSI{}.setCursorPosition(s.visualCursorX, s.visualCursorY)
 
 	// Declaring a buffer to store a single byte of user input at a time
 	buf := make([]byte, 1)
 
 	s.needsRedraw = true
 
-	ANSI.clearScreen()
+	ANSI{}.clearScreen()
 
 	for {
 		buffer := &s.buffers[s.activeBufferIdx]
@@ -242,7 +240,7 @@ func main() {
 			preDrawCursorX := s.visualCursorX
 			preDrawCursorY := s.visualCursorY
 
-			ANSI.clearScreen()
+			ANSI{}.clearScreen()
 			s.setVisualCursorPosition(0, 0)
 
 			// Printing top chrome content
@@ -300,7 +298,7 @@ func main() {
 
 		// Exiting the loop if 'q' is pressed
 		if buf[0] == 'q' {
-			ANSI.clearScreen()
+			ANSI{}.clearScreen()
 			break
 		}
 

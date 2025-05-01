@@ -7,19 +7,19 @@ import (
 	"strings"
 )
 
-type ANSIInstructions struct{}
+type ANSI struct{}
 
-func (ANSIInstructions) clearScreen() {
+func (ANSI) clearScreen() {
 	fmt.Printf("\x1b[2J")
 }
 
-func (ANSIInstructions) setCursorPosition(x, y int) {
+func (ANSI) setCursorPosition(x, y int) {
 	// Incrementing the given values, because ANSI row/col positions
 	// seem to be 1-indexed instead of 0-indexed
 	fmt.Printf("\033[%d;%dH", y+1, x+1)
 }
 
-func (ANSIInstructions) getCursorPosition() (x, y int, err error) {
+func (ANSI) getCursorPosition() (x, y int, err error) {
 	// Querying the terminal for cursor position
 	fmt.Print("\033[6n")
 
@@ -59,23 +59,24 @@ func (ANSIInstructions) getCursorPosition() (x, y int, err error) {
 	return rows, cols, nil
 }
 
-func (ANSIInstructions) getTerminalSize() (rows, cols int, err error) {
-	last_x, last_y, err := ANSIInstructions{}.getCursorPosition()
+func (ANSI) getTerminalSize() (rows, cols int, err error) {
+	last_x, last_y, err := ANSI{}.getCursorPosition()
 
 	if err != nil {
 		return 0, 0, err
 	}
 
 	// Moving cursor to bottom-right
-	ANSIInstructions{}.setCursorPosition(9999, 9999)
+	ANSI{}.setCursorPosition(9999, 9999)
 
-	w, h, err := ANSIInstructions{}.getCursorPosition()
+	w, h, err := ANSI{}.getCursorPosition()
 
 	if err != nil {
 		return 0, 0, err
 	}
 
-	ANSIInstructions{}.setCursorPosition(last_x, last_y)
+	ANSI{}.setCursorPosition(last_x, last_y)
 
 	return w, h, nil
 }
+
