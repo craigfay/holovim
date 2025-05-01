@@ -1,10 +1,11 @@
+
 package main
 
 type Program[T Terminal] struct {
 	settings Settings
-	state ProgramState
-	logger func(string) error
-	term T
+	state    ProgramState
+	logger   func(string) error
+	term     T
 }
 
 type Settings struct {
@@ -25,6 +26,7 @@ type KeyBindings struct {
 	cursor_down  byte
 	cursor_left  byte
 	cursor_right byte
+	close_buffer byte
 }
 
 type ProgramState struct {

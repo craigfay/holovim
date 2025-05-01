@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"bufio"
+	"fmt"
+	xterm "golang.org/x/term"
+	"os"
 	"path/filepath"
 	"strings"
-	xterm "golang.org/x/term"
 )
 
 func main() {
@@ -46,19 +46,20 @@ func main() {
 		},
 	}
 
-	program := Program[ANSI] {
+	program := Program[ANSI]{
 		logger: getLogger("./logfile.log.txt"),
-		state: ProgramState{},
-		term: ANSI{},
+		state:  ProgramState{},
+		term:   ANSI{},
 		settings: Settings{
-			tabstop: 4,
-			tabchar: "›", // (U+203A)
+			tabstop:           4,
+			tabchar:           "›", // (U+203A)
 			cursor_x_overflow: true,
-			keybind: KeyBindings {
+			keybind: KeyBindings{
 				cursor_up:    'k',
 				cursor_down:  'j',
 				cursor_left:  'h',
 				cursor_right: 'l',
+				close_buffer: 'q',
 			},
 		},
 	}
@@ -125,8 +126,7 @@ func handleUserInput[T Terminal](input byte, program *Program[T]) {
 		moveCursorRight(s, settings)
 	}
 
-	// Exiting the loop if 'q' is pressed
-	if input == 'q' {
+	if input == keys.close_buffer {
 		s.shouldExit = true
 	}
 
