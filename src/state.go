@@ -1,15 +1,17 @@
 package main
 
-import (
-	"bufio"
-	"fmt"
-	"os"
-)
+type Program[T Terminal] struct {
+	settings Settings
+	state ProgramState
+	logger func(string) error
+	term T
+}
 
 type Settings struct {
 	tabstop           int
 	tabchar           string
 	cursor_x_overflow bool
+	keybind           KeyBindings
 }
 
 type Buffer struct {
@@ -18,7 +20,7 @@ type Buffer struct {
 	topVisibleLineIdx int
 }
 
-type Motions struct {
+type KeyBindings struct {
 	cursor_up    byte
 	cursor_down  byte
 	cursor_left  byte
@@ -28,7 +30,6 @@ type Motions struct {
 type ProgramState struct {
 	shouldExit         bool
 	buffers            []Buffer
-	motions            Motions
 	activeBufferIdx    int
 	needsRedraw        bool
 	termHeight         int
@@ -71,64 +72,8 @@ func (s *ProgramState) setLogicalCursorPosition(x, y int) {
 	s.needsRedraw = true
 }
 
-func initializeState(settings *Settings) (s ProgramState) {
-	args := os.Args
-
-	_ = getLogger("./logfile.log.txt")
-
-	// In development, a workaround is necessary to pass arguments
-	// that end in ".go", because the go compiler thinks they are part
-	// of invalid input, instead of an argument to our compiled program.
-	// In this case, we can use `go run main.go -- editme.go`. This
-	// codeblock modifies the args list to allow this workaround.
-	for i, arg := range args {
-		if arg == "--" {
-			// Ignoring everything before "--"
-			args = args[i:]
-			break
-		}
-	}
-
-	// Extracting the filename from the command-line arguments, and opening it
-	filename := args[1]
-
-	file, err := os.Open(filename)
-
-	if err != nil {
-		fmt.Printf("Error opening file %s: %v\n", filename, err)
-		return
-	}
-
-	// Ensuring the file is closed when the program exits
-	defer file.Close()
-
-	// Loading the file contents into a list of strings, line by line
-	lines := []string{}
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Printf("Error scanning file %s\n", err)
-		return
-	}
-
-	s.motions = Motions{
-		cursor_up:    'k',
-		cursor_down:  'j',
-		cursor_left:  'h',
-		cursor_right: 'l',
-	}
-
-	s.buffers = []Buffer{
-		{
-			filepath:          filename,
-			lines:             lines,
-			topVisibleLineIdx: 0,
-		},
-	}
+func initializeState[T Terminal](program *Program[T]) {
+	s := &program.state
 
 	s.activeBufferIdx = 0
 
@@ -163,10 +108,8 @@ func initializeState(settings *Settings) (s ProgramState) {
 	s.lastVisualCursorX = s.visualCursorX
 	s.lastVisualCursorY = s.visualCursorY
 
-	ANSI{}.setCursorPosition(s.visualCursorX, s.visualCursorY)
-	ANSI{}.clearScreen()
+	program.term.setCursorPosition(s.visualCursorX, s.visualCursorY)
+	program.term.clearScreen()
 
 	s.needsRedraw = true
-
-	return s
 }

@@ -2,22 +2,72 @@ package main
 
 import (
 	"fmt"
-	"golang.org/x/term"
 	"os"
+	"bufio"
 	"path/filepath"
 	"strings"
+	xterm "golang.org/x/term"
 )
 
 func main() {
-	settings := Settings{
-		tabstop:           4,
-		tabchar:           "›", // (U+203A)
-		cursor_x_overflow: true,
+	args := os.Args
+
+	// Extracting the filename from the command-line arguments, and opening it
+	filename := args[1]
+
+	file, err := os.Open(filename)
+
+	if err != nil {
+		fmt.Printf("Error opening file %s: %v\n", filename, err)
+		return
 	}
+
+	// Ensuring the file is closed when the program exits
+	defer file.Close()
+
+	// Loading the file contents into a list of strings, line by line
+	lines := []string{}
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Printf("Error scanning file %s\n", err)
+		return
+	}
+
+	buffers := []Buffer{
+		{
+			filepath:          filename,
+			lines:             lines,
+			topVisibleLineIdx: 0,
+		},
+	}
+
+	program := Program[ANSI] {
+		logger: getLogger("./logfile.log.txt"),
+		state: ProgramState{},
+		term: ANSI{},
+		settings: Settings{
+			tabstop: 4,
+			tabchar: "›", // (U+203A)
+			cursor_x_overflow: true,
+			keybind: KeyBindings {
+				cursor_up:    'k',
+				cursor_down:  'j',
+				cursor_left:  'h',
+				cursor_right: 'l',
+			},
+		},
+	}
+
+	program.state.buffers = buffers
 
 	// Saving the current state of the terminal,
 	// and re-loading it when this program exits
-	oldTerminalState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	oldTerminalState, err := xterm.MakeRaw(int(os.Stdin.Fd()))
 
 	if err != nil {
 		panic(err)
@@ -25,17 +75,17 @@ func main() {
 
 	// Resetting cursor position and terminal state after the program closes.
 	// This isn't exactly true, because we're not resetting it exactly as it was.
-	defer ANSI{}.setCursorPosition(0, 0)
-	defer term.Restore(int(os.Stdin.Fd()), oldTerminalState)
+	defer program.term.setCursorPosition(0, 0)
+	defer xterm.Restore(int(os.Stdin.Fd()), oldTerminalState)
 
-	s := initializeState(&settings)
+	initializeState(&program)
 
 	// Declaring a buffer to store a single byte of user input at a time
 	buf := make([]byte, 1)
 
 	for {
-		if true || s.needsRedraw {
-			redraw(&s, &settings)
+		if true || program.state.needsRedraw {
+			redraw(&program)
 		}
 
 		// Reading a single byte from stdin into the buffer
@@ -46,28 +96,32 @@ func main() {
 			break
 		}
 
-		handleUserInput(buf[0], &s, &settings)
+		handleUserInput(buf[0], &program)
 
-		if s.shouldExit {
+		if program.state.shouldExit {
 			return
 		}
 	}
 }
 
-func handleUserInput(input byte, s *ProgramState, settings *Settings) {
-	if input == s.motions.cursor_down {
+func handleUserInput[T Terminal](input byte, program *Program[T]) {
+	s := &program.state
+	settings := &program.settings
+	keys := &program.settings.keybind
+
+	if input == keys.cursor_down {
 		moveCursorDown(s, settings)
 	}
 
-	if input == s.motions.cursor_up {
+	if input == keys.cursor_up {
 		moveCursorUp(s, settings)
 	}
 
-	if input == s.motions.cursor_left {
+	if input == keys.cursor_left {
 		moveCursorLeft(s, settings)
 	}
 
-	if input == s.motions.cursor_right {
+	if input == keys.cursor_right {
 		moveCursorRight(s, settings)
 	}
 
@@ -79,21 +133,24 @@ func handleUserInput(input byte, s *ProgramState, settings *Settings) {
 	s.needsRedraw = true
 }
 
-func redraw(s *ProgramState, settings *Settings) {
+func redraw[T Terminal](program *Program[T]) {
+	s := &program.state
+	settings := &program.settings
+
 	contentAreaRowCount := s.termHeight - s.topChromeHeight - s.bottomChromeHeight
 	buffer := &s.buffers[s.activeBufferIdx]
 
 	preDrawCursorX := s.visualCursorX
 	preDrawCursorY := s.visualCursorY
 
-	ANSI{}.clearScreen()
+	program.term.clearScreen()
 	s.setVisualCursorPosition(0, 0)
 
 	// Printing top chrome content
 	for i := 0; i < s.topChromeHeight; i++ {
 		line := s.topChromeContent[i]
 
-		fmt.Printf("%s", line)
+		program.term.printf("%s", line)
 		s.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 	}
 
@@ -109,7 +166,7 @@ func redraw(s *ProgramState, settings *Settings) {
 		line := buffer.lines[lineIdx]
 		line = replaceTabsWithSpaces(line, settings.tabstop, settings.tabchar)
 
-		fmt.Printf("%s", line)
+		program.term.printf("%s", line)
 		s.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 	}
 
