@@ -1,4 +1,3 @@
-
 package main
 
 func moveCursorDown(s *ProgramState, settings *Settings) {

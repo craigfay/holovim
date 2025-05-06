@@ -1,4 +1,3 @@
-
 package main
 
 type Program[T Terminal] struct {

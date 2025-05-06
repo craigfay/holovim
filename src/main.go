@@ -81,23 +81,24 @@ func main() {
 
 	initializeState(&program)
 
-	// Declaring a buffer to store a single byte of user input at a time
-	buf := make([]byte, 1)
+	inputIterator := NewStdinIterator()
 
+	runMainLoop(&program, inputIterator)
+}
+
+func runMainLoop[T Terminal](program *Program[T], inputIterator InputIterator) {
 	for {
 		if true || program.state.needsRedraw {
-			redraw(&program)
+			redraw(program)
 		}
 
-		// Reading a single byte from stdin into the buffer
-		_, err := os.Stdin.Read(buf)
-
+		input, err := inputIterator.Next()
 		if err != nil {
 			fmt.Println("Error reading input:", err)
 			break
 		}
 
-		handleUserInput(buf[0], &program)
+		handleUserInput(input, program)
 
 		if program.state.shouldExit {
 			return
