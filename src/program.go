@@ -14,6 +14,21 @@ type Settings struct {
 	keybind           KeyBindings
 }
 
+func defaultSettings() Settings {
+	return Settings{
+		tabstop:           4,
+		tabchar:           "›",
+		cursor_x_overflow: true,
+		keybind: KeyBindings{
+			cursor_up:    'k',
+			cursor_down:  'j',
+			cursor_left:  'h',
+			cursor_right: 'l',
+			close_buffer: 'q',
+		},
+	}
+}
+
 type Buffer struct {
 	filepath          string
 	lines             []string
@@ -78,7 +93,7 @@ func initializeState[T Terminal](program *Program[T]) {
 
 	s.activeBufferIdx = 0
 
-	termHeight, _, err := ANSI{}.getSize()
+	termHeight, _, err := program.term.getSize()
 	s.termHeight = termHeight
 
 	if err != nil {
@@ -114,3 +129,4 @@ func initializeState[T Terminal](program *Program[T]) {
 
 	s.needsRedraw = true
 }
+

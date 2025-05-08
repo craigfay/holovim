@@ -20,20 +20,20 @@ type MockTerminal struct {
 	cursorY int
 }
 
-func (t *MockTerminal) printf(s string, args ...interface{}) {}
+func (t MockTerminal) printf(s string, args ...interface{}) {}
 
-func (t *MockTerminal) clearScreen() {}
+func (t MockTerminal) clearScreen() {}
 
-func (t *MockTerminal) setCursorPosition(x, y int) {
+func (t MockTerminal) setCursorPosition(x, y int) {
 	t.cursorX = x
 	t.cursorY = y
 }
 
-func (t *MockTerminal) getCursorPosition() (x, y int, err error) {
+func (t MockTerminal) getCursorPosition() (x, y int, err error) {
 	return t.cursorX, t.cursorY, nil
 }
 
-func (t *MockTerminal) getSize() (rows, cols int, err error) {
+func (t MockTerminal) getSize() (rows, cols int, err error) {
 	return 100, 100, nil
 }
 

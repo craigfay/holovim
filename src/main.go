@@ -47,21 +47,10 @@ func main() {
 	}
 
 	program := Program[ANSI]{
-		logger: getLogger("./logfile.log.txt"),
-		state:  ProgramState{},
-		term:   ANSI{},
-		settings: Settings{
-			tabstop:           4,
-			tabchar:           "›", // (U+203A)
-			cursor_x_overflow: true,
-			keybind: KeyBindings{
-				cursor_up:    'k',
-				cursor_down:  'j',
-				cursor_left:  'h',
-				cursor_right: 'l',
-				close_buffer: 'q',
-			},
-		},
+		logger:   getLogger("./logfile.log.txt"),
+		state:    ProgramState{},
+		term:     ANSI{},
+		settings: defaultSettings(),
 	}
 
 	program.state.buffers = buffers

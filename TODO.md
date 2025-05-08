@@ -1,4 +1,10 @@
 
+## Bugs
+
+- Bad error message when incorrect args passed on startup
+- End of Input yields an error message that pollutes test output
+- Clearing the screen on program end seems to not happen uniformly
+
 ## Testing Scenarios
 - Can scroll by moving rightward at the end of the last line
 - Cannot exceed first or last characters in file with motions
