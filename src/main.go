@@ -128,9 +128,6 @@ func redraw[T Terminal](program *Program[T]) {
 	s := &program.state
 	settings := &program.settings
 
-	contentAreaRowCount := s.termHeight - s.topChromeHeight - s.bottomChromeHeight
-	buffer := &s.buffers[s.activeBufferIdx]
-
 	preDrawCursorX := s.visualCursorX
 	preDrawCursorY := s.visualCursorY
 
@@ -144,20 +141,25 @@ func redraw[T Terminal](program *Program[T]) {
 		program.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 	}
 
-	// Printing main buffer content
-	for i := 0; i <= contentAreaRowCount; i++ {
-		lineIdx := i + buffer.topVisibleLineIdx
+	for _, panel := range s.panels {
+		program.setVisualCursorPosition(panel.topLeftX, panel.topLeftY)
+		buffer := &s.buffers[panel.bufferIdx]
 
-		// Stopping if about to try to draw a line that doesn't exist
-		if lineIdx >= len(buffer.lines) {
-			break
+		for i := 0; i <= panel.height; i++ {
+			lineIdx := i + buffer.topVisibleLineIdx
+
+			// Stopping if about to try to draw a line that doesn't exist
+			if lineIdx >= len(buffer.lines) {
+				break
+			}
+
+			line := buffer.lines[lineIdx]
+			line = replaceTabsWithSpaces(line, settings.tabstop, settings.tabchar)
+			lastCharIdx := min(panel.width, len(line))
+
+			program.term.printf("%s", line[:lastCharIdx])
+			program.setVisualCursorPosition(panel.topLeftX, s.visualCursorY+1)
 		}
-
-		line := buffer.lines[lineIdx]
-		line = replaceTabsWithSpaces(line, settings.tabstop, settings.tabchar)
-
-		program.term.printf("%s", line)
-		program.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 	}
 
 	// Resetting state after re-draw

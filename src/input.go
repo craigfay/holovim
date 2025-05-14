@@ -46,4 +46,3 @@ func (it *StaticInputIterator) Next() (bool, byte, error) {
 	it.index++
 	return false, input, nil
 }
-

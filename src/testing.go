@@ -1,4 +1,3 @@
-
 package main
 
 import "strings"
@@ -24,8 +23,7 @@ func testingProgramFromBuf(buf string) Program[MockTerminal] {
 	return program
 }
 
-const basicBuf =
-`package main
+const basicBuf = `package main
 
 import (
 	"fmt"
