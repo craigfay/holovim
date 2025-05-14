@@ -1,6 +1,9 @@
 package main
 
-func moveCursorDown(s *ProgramState, settings *Settings) {
+func (p *Program[T]) moveCursorDown() {
+	settings := &p.settings
+	s := &p.state
+
 	buffer := &s.buffers[s.activeBufferIdx]
 	contentAreaMaxY := s.termHeight - s.bottomChromeHeight
 	contentAreaRowCount := s.termHeight - s.topChromeHeight - s.bottomChromeHeight
@@ -53,12 +56,15 @@ func moveCursorDown(s *ProgramState, settings *Settings) {
 			newVisualY = s.visualCursorY
 		}
 
-		s.setVisualCursorPosition(newVisualX, newVisualY)
-		s.setLogicalCursorPosition(newLogicalX, s.logicalCursorY+1)
+		p.setVisualCursorPosition(newVisualX, newVisualY)
+		p.setLogicalCursorPosition(newLogicalX, s.logicalCursorY+1)
 	}
 }
 
-func moveCursorUp(s *ProgramState, settings *Settings) {
+func (p *Program[T]) moveCursorUp() {
+	settings := p.settings
+	s := p.state
+
 	buffer := &s.buffers[s.activeBufferIdx]
 	canScroll := buffer.topVisibleLineIdx > 0
 
@@ -102,12 +108,15 @@ func moveCursorUp(s *ProgramState, settings *Settings) {
 			newVisualY = s.visualCursorY
 		}
 
-		s.setVisualCursorPosition(newVisualX, newVisualY)
-		s.setLogicalCursorPosition(newLogicalX, s.logicalCursorY-1)
+		p.setVisualCursorPosition(newVisualX, newVisualY)
+		p.setLogicalCursorPosition(newLogicalX, s.logicalCursorY-1)
 	}
 }
 
-func moveCursorLeft(s *ProgramState, settings *Settings) {
+func (p *Program[T]) moveCursorLeft() {
+	settings := p.settings
+	s := p.state
+
 	buffer := &s.buffers[s.activeBufferIdx]
 	lineContent := &buffer.lines[s.logicalCursorY]
 
@@ -137,8 +146,8 @@ func moveCursorLeft(s *ProgramState, settings *Settings) {
 			newVisualY = s.visualCursorY
 		}
 
-		s.setLogicalCursorPosition(newLogicalX, s.logicalCursorY-1)
-		s.setVisualCursorPosition(newVisualX, newVisualY)
+		p.setLogicalCursorPosition(newLogicalX, s.logicalCursorY-1)
+		p.setVisualCursorPosition(newVisualX, newVisualY)
 		s.bookmarkedVisualCursorX = newVisualX
 
 	} else if s.logicalCursorX != 0 {
@@ -152,13 +161,16 @@ func moveCursorLeft(s *ProgramState, settings *Settings) {
 			newVisualX -= 1
 		}
 
-		s.setLogicalCursorPosition(s.logicalCursorX-1, s.logicalCursorY)
-		s.setVisualCursorPosition(newVisualX, s.visualCursorY)
+		p.setLogicalCursorPosition(s.logicalCursorX-1, s.logicalCursorY)
+		p.setVisualCursorPosition(newVisualX, s.visualCursorY)
 		s.bookmarkedVisualCursorX = newVisualX
 	}
 }
 
-func moveCursorRight(s *ProgramState, settings *Settings) {
+func (p *Program[T]) moveCursorRight() {
+	settings := p.settings
+	s := p.state
+
 	buffer := &s.buffers[s.activeBufferIdx]
 	lineContent := &buffer.lines[s.logicalCursorY]
 	lineLength := len(*lineContent)
@@ -185,8 +197,8 @@ func moveCursorRight(s *ProgramState, settings *Settings) {
 			buffer.topVisibleLineIdx += 1
 		}
 
-		s.setLogicalCursorPosition(0, s.logicalCursorY+1)
-		s.setVisualCursorPosition(s.leftChromeWidth, newVisualY)
+		p.setLogicalCursorPosition(0, s.logicalCursorY+1)
+		p.setVisualCursorPosition(s.leftChromeWidth, newVisualY)
 		s.bookmarkedVisualCursorX = s.leftChromeWidth
 
 		// moving the cursor right
@@ -200,8 +212,9 @@ func moveCursorRight(s *ProgramState, settings *Settings) {
 			newVisualX += 1
 		}
 
-		s.setLogicalCursorPosition(s.logicalCursorX+1, s.logicalCursorY)
-		s.setVisualCursorPosition(newVisualX, s.visualCursorY)
+		p.setLogicalCursorPosition(s.logicalCursorX+1, s.logicalCursorY)
+		p.setVisualCursorPosition(newVisualX, s.visualCursorY)
 		s.bookmarkedVisualCursorX = newVisualX
 	}
 }
+

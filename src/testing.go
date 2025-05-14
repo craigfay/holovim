@@ -13,7 +13,7 @@ func testingProgramFromBuf(buf string) Program[MockTerminal] {
 	}
 
 	program := Program[MockTerminal]{
-		logger:   getLogger("./logfile.log.txt"),
+		logger:   getLogger("./logfile_test.log.txt"),
 		state:    ProgramState{},
 		term:     MockTerminal{},
 		settings: defaultSettings(),

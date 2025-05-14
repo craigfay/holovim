@@ -71,21 +71,21 @@ type ProgramState struct {
 
 // Adding a helper to deliver ANSI instruction, while
 // also updating native variables to track the cursor
-func (s *ProgramState) setVisualCursorPosition(x, y int) {
-	ANSI{}.setCursorPosition(x, y)
-	s.lastVisualCursorX = s.visualCursorX
-	s.lastVisualCursorY = s.visualCursorY
-	s.visualCursorX = x
-	s.visualCursorY = y
-	s.needsRedraw = true
+func (p *Program[T]) setVisualCursorPosition(x, y int) {
+	p.term.setCursorPosition(x, y)
+	p.state.lastVisualCursorX = p.state.visualCursorX
+	p.state.lastVisualCursorY = p.state.visualCursorY
+	p.state.visualCursorX = x
+	p.state.visualCursorY = y
+	p.state.needsRedraw = true
 }
 
-func (s *ProgramState) setLogicalCursorPosition(x, y int) {
-	s.lastLogicalCursorX = s.logicalCursorX
-	s.lastLogicalCursorY = s.logicalCursorY
-	s.logicalCursorX = x
-	s.logicalCursorY = y
-	s.needsRedraw = true
+func (p *Program[T]) setLogicalCursorPosition(x, y int) {
+	p.state.lastLogicalCursorX = p.state.logicalCursorX
+	p.state.lastLogicalCursorY = p.state.logicalCursorY
+	p.state.logicalCursorX = x
+	p.state.logicalCursorY = y
+	p.state.needsRedraw = true
 }
 
 func initializeState[T Terminal](program *Program[T]) {

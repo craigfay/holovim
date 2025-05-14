@@ -1,12 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"os"
 )
 
 type InputIterator interface {
-	Next() (byte, error)
+	Next() (bool, byte, error)
 }
 
 type StdinIterator struct {
@@ -19,12 +18,12 @@ func NewStdinIterator() *StdinIterator {
 	}
 }
 
-func (it *StdinIterator) Next() (byte, error) {
+func (it *StdinIterator) Next() (bool, byte, error) {
 	_, err := os.Stdin.Read(it.buf)
 	if err != nil {
-		return 0, err
+		return false, 0, err
 	}
-	return it.buf[0], nil
+	return false, it.buf[0], nil
 }
 
 type StaticInputIterator struct {
@@ -39,11 +38,12 @@ func NewStaticInputIterator(inputs []byte) *StaticInputIterator {
 	}
 }
 
-func (it *StaticInputIterator) Next() (byte, error) {
+func (it *StaticInputIterator) Next() (bool, byte, error) {
 	if it.index >= len(it.inputs) {
-		return 0, fmt.Errorf("end of input")
+		return true, 0, nil
 	}
 	input := it.inputs[it.index]
 	it.index++
-	return input, nil
+	return false, input, nil
 }
+

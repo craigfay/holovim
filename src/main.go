@@ -75,52 +75,53 @@ func main() {
 	runMainLoop(&program, inputIterator)
 }
 
-func runMainLoop[T Terminal](program *Program[T], inputIterator InputIterator) {
+func runMainLoop[T Terminal](prog *Program[T], inputIterator InputIterator) {
 	for {
-		if true || program.state.needsRedraw {
-			redraw(program)
+		if true || prog.state.needsRedraw {
+			redraw(prog)
 		}
 
-		input, err := inputIterator.Next()
+		done, input, err := inputIterator.Next()
 		if err != nil {
 			fmt.Println("Error reading input:", err)
 			break
 		}
+		if done {
+			break
+		}
 
-		handleUserInput(input, program)
+		handleUserInput(input, prog)
 
-		if program.state.shouldExit {
+		if prog.state.shouldExit {
 			return
 		}
 	}
 }
 
-func handleUserInput[T Terminal](input byte, program *Program[T]) {
-	s := &program.state
-	settings := &program.settings
-	keys := &program.settings.keybind
+func handleUserInput[T Terminal](input byte, prog *Program[T]) {
+	keys := &prog.settings.keybind
 
 	if input == keys.cursor_down {
-		moveCursorDown(s, settings)
+		prog.moveCursorDown()
 	}
 
 	if input == keys.cursor_up {
-		moveCursorUp(s, settings)
+		prog.moveCursorUp()
 	}
 
 	if input == keys.cursor_left {
-		moveCursorLeft(s, settings)
+		prog.moveCursorLeft()
 	}
 
 	if input == keys.cursor_right {
-		moveCursorRight(s, settings)
+		prog.moveCursorRight()
 	}
 
 	if input == keys.close_buffer {
-		s.shouldExit = true
+		prog.state.shouldExit = true
 	}
 
-	s.needsRedraw = true
+	prog.state.needsRedraw = true
 }
 
 func redraw[T Terminal](program *Program[T]) {
@@ -134,14 +135,13 @@ func redraw[T Terminal](program *Program[T]) {
 	preDrawCursorY := s.visualCursorY
 
 	program.term.clearScreen()
-	s.setVisualCursorPosition(0, 0)
+	program.setVisualCursorPosition(0, 0)
 
 	// Printing top chrome content
 	for i := 0; i < s.topChromeHeight; i++ {
 		line := s.topChromeContent[i]
-
 		program.term.printf("%s", line)
-		s.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
+		program.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 	}
 
 	// Printing main buffer content
@@ -157,11 +157,11 @@ func redraw[T Terminal](program *Program[T]) {
 		line = replaceTabsWithSpaces(line, settings.tabstop, settings.tabchar)
 
 		program.term.printf("%s", line)
-		s.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
+		program.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 	}
 
 	// Resetting state after re-draw
-	s.setVisualCursorPosition(preDrawCursorX, preDrawCursorY)
+	program.setVisualCursorPosition(preDrawCursorX, preDrawCursorY)
 	s.needsRedraw = false
 }
 

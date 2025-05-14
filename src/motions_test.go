@@ -56,3 +56,47 @@ func TestCursorLeft(t *testing.T) {
     p.assertLogicalPos(t, 0, 0)
 }
 
+func TestRightwardWrapToNextLine(t *testing.T) {
+	p := testingProgramFromBuf("ab\ncd")
+    p.processInputs('l', 'l')
+    p.assertLogicalPos(t, 0, 1)
+}
+
+func TestLeftwardWrapToPrevLine(t *testing.T) {
+	p := testingProgramFromBuf("ab\ncd")
+    p.processInputs('j', 'h')
+    p.assertLogicalPos(t, 1, 0)
+}
+
+func TestCannotMoveCursorBeforeFirstChar(t *testing.T) {
+	p := testingProgramFromBuf("a\nb")
+    p.processInputs('h')
+    p.assertLogicalPos(t, 0, 0)
+    p.processInputs('k')
+    p.assertLogicalPos(t, 0, 0)
+}
+
+func TestCannotMoveCursorBeyondLastChar(t *testing.T) {
+	p := testingProgramFromBuf("a\nb")
+    p.processInputs('l', 'l', 'l')
+    p.assertLogicalPos(t, 0, 1)
+    p.processInputs('j')
+    p.assertLogicalPos(t, 0, 1)
+}
+
+func TestXTruncatesWhenMoveDownToShorterLine(t *testing.T) {
+	p := testingProgramFromBuf("ab\nc")
+    p.processInputs('l')
+    p.assertLogicalPos(t, 1, 0)
+    p.processInputs('j')
+    p.assertLogicalPos(t, 0, 1)
+}
+
+//func TestXTruncatesWhenMoveUpToShorterLine(t *testing.T) {
+//	p := testingProgramFromBuf("a\nbc")
+//    p.processInputs('j', 'l')
+//    p.assertLogicalPos(t, 1, 1)
+//    p.processInputs('k')
+//    p.assertLogicalPos(t, 0, 0)
+//}
+
