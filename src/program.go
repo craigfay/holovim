@@ -46,7 +46,7 @@ type KeyBindings struct {
 }
 
 type Tab struct {
-	panels []Panel
+	panels         []Panel
 	activePanelIdx int
 }
 
@@ -54,7 +54,7 @@ type ProgramState struct {
 	shouldExit         bool
 	buffers            []Buffer
 	tabs               []Tab
-	activeTabIdx     int
+	activeTabIdx       int
 	needsRedraw        bool
 	termHeight         int
 	topChromeContent   []string
@@ -146,7 +146,7 @@ func initializeState[T Terminal](program *Program[T]) {
 
 	s.tabs = []Tab{
 		{
-			panels: panels,
+			panels:         panels,
 			activePanelIdx: 0,
 		},
 	}
