@@ -169,7 +169,7 @@ func redraw[T Terminal](prog *Program[T]) {
 
 			// Calculating visual cursor position
 			if isActivePanel && isActiveLine {
-				x := countVisualColumns(line, panel.logicalCursorX, &prog.settings)
+				x := getVisualX(line, panel.logicalCursorX, &prog.settings)
 				visualCursorY = panel.topLeftY + y
 				visualCursorX = panel.topLeftX + x
 			}
