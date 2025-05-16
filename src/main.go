@@ -143,7 +143,8 @@ func redraw[T Terminal](program *Program[T]) {
 		program.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 	}
 
-	for _, panel := range s.panels {
+	for _, tab := range s.tabs {
+		panel := &tab.panels[tab.activePanelIdx]
 		program.setVisualCursorPosition(panel.topLeftX, panel.topLeftY)
 		buffer := &s.buffers[panel.bufferIdx]
 

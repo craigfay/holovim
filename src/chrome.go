@@ -7,7 +7,9 @@ import (
 func (prog *Program[T]) updateTopChrome() {
 	tabNames := []string{}
 
-	for _, panel := range prog.state.panels {
+	for _, tab := range prog.state.tabs {
+		panel := &tab.panels[tab.activePanelIdx]
+
 		buffer := prog.state.buffers[panel.bufferIdx]
 		tabName := buffer.filepath
 

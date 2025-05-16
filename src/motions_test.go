@@ -8,7 +8,8 @@ func (p *Program[MockTerminal]) assertLogicalPos(
 	t *testing.T,
 	x, y int,
 ) {
-	panel := p.state.panels[p.state.activePanelIdx]
+	tab := p.state.tabs[p.state.activeTabIdx]
+	panel := tab.panels[tab.activePanelIdx]
 	actX, actY := panel.logicalCursorX, panel.logicalCursorY
 
 	if actX != x || actY != y {

@@ -45,11 +45,16 @@ type KeyBindings struct {
 	close_buffer byte
 }
 
+type Tab struct {
+	panels []Panel
+	activePanelIdx int
+}
+
 type ProgramState struct {
 	shouldExit         bool
 	buffers            []Buffer
-	panels             []Panel
-	activePanelIdx     int
+	tabs               []Tab
+	activeTabIdx     int
 	needsRedraw        bool
 	termHeight         int
 	topChromeContent   []string
@@ -92,8 +97,10 @@ func (p *Program[T]) setVisualCursorPosition(x, y int) {
 	p.state.needsRedraw = true
 }
 
+// TODO move make this a method of Panel
 func (p *Program[T]) setLogicalCursorPosition(x, y int) {
-	panel := &p.state.panels[p.state.activePanelIdx]
+	tab := &p.state.tabs[p.state.activeTabIdx]
+	panel := &tab.panels[tab.activePanelIdx]
 	panel.lastLogicalCursorX = panel.logicalCursorX
 	panel.lastLogicalCursorY = panel.logicalCursorY
 	panel.logicalCursorX = x
@@ -104,7 +111,7 @@ func (p *Program[T]) setLogicalCursorPosition(x, y int) {
 func initializeState[T Terminal](program *Program[T]) {
 	s := &program.state
 
-	s.activePanelIdx = 0
+	s.activeTabIdx = 0
 
 	termHeight, termWidth, err := program.term.getSize()
 	s.termHeight = termHeight
@@ -123,7 +130,7 @@ func initializeState[T Terminal](program *Program[T]) {
 		"Press \"q\" to exit...",
 	}
 
-	s.panels = []Panel{
+	panels := []Panel{
 		{
 			bufferIdx:          0,
 			topLeftX:           s.leftChromeWidth,
@@ -134,6 +141,13 @@ func initializeState[T Terminal](program *Program[T]) {
 			lastLogicalCursorY: 0,
 			width:              termWidth - s.leftChromeWidth,
 			height:             termHeight - s.topChromeHeight - s.bottomChromeHeight,
+		},
+	}
+
+	s.tabs = []Tab{
+		{
+			panels: panels,
+			activePanelIdx: 0,
 		},
 	}
 

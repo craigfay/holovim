@@ -4,7 +4,8 @@ func (p *Program[T]) moveCursorDown() {
 	settings := &p.settings
 	s := &p.state
 
-	panel := &s.panels[s.activePanelIdx]
+	tab := &s.tabs[s.activeTabIdx]
+	panel := &tab.panels[tab.activePanelIdx]
 	buffer := &s.buffers[panel.bufferIdx]
 
 	isAtContentBottom := panel.logicalCursorY+1 >= len(buffer.lines)
@@ -66,7 +67,8 @@ func (p *Program[T]) moveCursorUp() {
 	settings := p.settings
 	s := p.state
 
-	panel := &s.panels[s.activePanelIdx]
+	tab := &s.tabs[s.activeTabIdx]
+	panel := &tab.panels[tab.activePanelIdx]
 	buffer := &s.buffers[panel.bufferIdx]
 
 	canScroll := buffer.topVisibleLineIdx > 0
@@ -120,7 +122,8 @@ func (p *Program[T]) moveCursorLeft() {
 	settings := p.settings
 	s := p.state
 
-	panel := &s.panels[s.activePanelIdx]
+	tab := &s.tabs[s.activeTabIdx]
+	panel := &tab.panels[tab.activePanelIdx]
 	buffer := &s.buffers[panel.bufferIdx]
 
 	lineContent := &buffer.lines[panel.logicalCursorY]
@@ -176,7 +179,8 @@ func (p *Program[T]) moveCursorRight() {
 	settings := p.settings
 	s := p.state
 
-	panel := &s.panels[s.activePanelIdx]
+	tab := &s.tabs[s.activeTabIdx]
+	panel := &tab.panels[tab.activePanelIdx]
 	buffer := &s.buffers[panel.bufferIdx]
 
 	lineContent := &buffer.lines[panel.logicalCursorY]
