@@ -1,10 +1,10 @@
 package main
 
-func (p *Program[T]) moveCursorDown() {
-	s := &p.state
+func (prog *Program[T]) moveCursorDown() {
+	s := &prog.state
 
-	tab := &s.tabs[s.activeTabIdx]
-	panel := &tab.panels[tab.activePanelIdx]
+	panel := prog.getActivePanel()
+
 	buffer := &s.buffers[panel.bufferIdx]
 
 	isAtContentBottom := panel.logicalCursorY+1 >= len(buffer.lines)
@@ -17,15 +17,15 @@ func (p *Program[T]) moveCursorDown() {
 		line := buffer.lines[panel.logicalCursorY]
 		nextLine := buffer.lines[panel.logicalCursorY+1]
 
-		currentVisualX := getVisualX(line, panel.logicalCursorX, &p.settings)
-		newLogicalX := getLogicalXWithVisualX(nextLine, currentVisualX, &p.settings)
+		currentVisualX := getVisualX(line, panel.logicalCursorX, &prog.settings)
+		newLogicalX := getLogicalXWithVisualX(nextLine, currentVisualX, &prog.settings)
 
 		// Scrolling if necessary
 		if isAtViewportBottom {
 			buffer.topVisibleLineIdx += 1
 		}
 
-		p.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY+1)
+		prog.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY+1)
 	}
 }
 
@@ -178,8 +178,8 @@ func (p *Program[T]) moveCursorRight() {
 		p.setVisualCursorPosition(s.leftChromeWidth, newVisualY)
 		s.bookmarkedVisualCursorX = s.leftChromeWidth
 
-		// moving the cursor right
 	} else {
+		// moving the cursor right
 		thisChar := (*lineContent)[panel.logicalCursorX]
 		newVisualX := s.visualCursorX
 

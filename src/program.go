@@ -163,3 +163,9 @@ func initializeState[T Terminal](program *Program[T]) {
 
 	s.needsRedraw = true
 }
+
+func (prog *Program[T]) getActivePanel() *Panel {
+	tab := &prog.state.tabs[prog.state.activeTabIdx]
+	return &tab.panels[tab.activePanelIdx]
+}
+
