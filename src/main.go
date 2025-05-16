@@ -169,16 +169,9 @@ func redraw[T Terminal](prog *Program[T]) {
 
 			// Calculating visual cursor position
 			if isActivePanel && isActiveLine {
+				x := countVisualColumns(line, panel.logicalCursorX, &prog.settings)
 				visualCursorY = panel.topLeftY + y
-				visualCursorX = panel.topLeftX
-
-				for x := 0; x < panel.logicalCursorX; x++ {
-					if line[x] == '\t' {
-						visualCursorX += prog.settings.tabstop
-					} else {
-						visualCursorX += 1
-					}
-				}
+				visualCursorX = panel.topLeftX + x
 			}
 
 			// Doing whitespace-related formatting, and printing the current line

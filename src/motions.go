@@ -1,7 +1,54 @@
 package main
 
+func countVisualColumns(line string, idx int, settings *Settings) int {
+	result := 0
+	for i := 0; i < min(idx, len(line)); i++ {
+		if line[i] == '\t' {
+			result += settings.tabstop
+		} else {
+			result += 1
+		}
+	}
+	return result
+}
+
+func getLogicalXWithVisualX(line string, visualX int, settings *Settings) int {
+	newLogicalX := 0
+	newVisualX := 0
+
+	// Incrementing newLogicalX until another increment would
+	// exceed the previous visualCursorX
+	for {
+		if newLogicalX+1 >= len(line) {
+			break
+		}
+
+		if newVisualX >= visualX {
+			break
+		}
+
+		visualXChunk := 0
+
+		isTab := line[newLogicalX] == '\t'
+
+		if isTab {
+			visualXChunk += settings.tabstop
+		} else {
+			visualXChunk += 1
+		}
+
+		if newVisualX+visualXChunk > visualX {
+			break
+		}
+
+		newVisualX += visualXChunk
+		newLogicalX += 1
+	}
+
+	return newLogicalX
+}
+
 func (p *Program[T]) moveCursorDown() {
-	settings := &p.settings
 	s := &p.state
 
 	tab := &s.tabs[s.activeTabIdx]
@@ -14,51 +61,18 @@ func (p *Program[T]) moveCursorDown() {
 	isAtViewportBottom := s.visualCursorY == panel.topLeftY+panel.height
 
 	if !isAtContentBottom || canScroll {
-		// moving the cursor down
+		// Moving the cursor down
+		line := buffer.lines[panel.logicalCursorY]
 		nextLine := buffer.lines[panel.logicalCursorY+1]
-		newLogicalX := 0
-		newVisualX := s.leftChromeWidth
 
-		targetVisualCursorX := max(s.visualCursorX, s.bookmarkedVisualCursorX)
-
-		// Incrementing newLogicalX until another increment would
-		// exceed the previous visualCursorX
-		for {
-			if newLogicalX+1 >= len(nextLine) {
-				break
-			}
-
-			if newVisualX >= targetVisualCursorX {
-				break
-			}
-
-			visualXChunk := 0
-
-			isTab := nextLine[newLogicalX] == '\t'
-
-			if isTab {
-				visualXChunk += settings.tabstop
-			} else {
-				visualXChunk += 1
-			}
-
-			if newVisualX+visualXChunk > targetVisualCursorX {
-				break
-			}
-
-			newVisualX += visualXChunk
-			newLogicalX += 1
-		}
-
-		newVisualY := s.visualCursorY + 1
+		currentVisualX := countVisualColumns(line, panel.logicalCursorX, &p.settings)
+		newLogicalX := getLogicalXWithVisualX(nextLine, currentVisualX, &p.settings)
 
 		// Scrolling if necessary
 		if isAtViewportBottom {
 			buffer.topVisibleLineIdx += 1
-			newVisualY = s.visualCursorY
 		}
 
-		p.setVisualCursorPosition(newVisualX, newVisualY)
 		p.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY+1)
 	}
 }
