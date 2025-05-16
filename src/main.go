@@ -126,30 +126,37 @@ func handleUserInput[T Terminal](input byte, prog *Program[T]) {
 	prog.state.needsRedraw = true
 }
 
-func redraw[T Terminal](program *Program[T]) {
-	s := &program.state
-	settings := &program.settings
+func redraw[T Terminal](prog *Program[T]) {
+	s := &prog.state
+	settings := &prog.settings
 
-	preDrawCursorX := s.visualCursorX
-	preDrawCursorY := s.visualCursorY
-
-	program.term.clearScreen()
-	program.setVisualCursorPosition(0, 0)
+	prog.term.clearScreen()
+	prog.setVisualCursorPosition(0, 0)
 
 	// Printing top chrome content
 	for i := 0; i < s.topChromeHeight; i++ {
 		line := s.topChromeContent[i]
-		program.term.printf("%s", line)
-		program.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
+		prog.term.printf("%s", line)
+		prog.setVisualCursorPosition(s.leftChromeWidth, s.visualCursorY+1)
 	}
 
-	for _, tab := range s.tabs {
-		panel := &tab.panels[tab.activePanelIdx]
-		program.setVisualCursorPosition(panel.topLeftX, panel.topLeftY)
-		buffer := &s.buffers[panel.bufferIdx]
+	tab := prog.state.tabs[prog.state.activeTabIdx]
+	panel := &tab.panels[tab.activePanelIdx]
+	prog.setVisualCursorPosition(panel.topLeftX, panel.topLeftY)
+	buffer := &s.buffers[panel.bufferIdx]
 
-		for i := 0; i <= panel.height; i++ {
-			lineIdx := i + buffer.topVisibleLineIdx
+	visualCursorX := 0
+	visualCursorY := 0
+
+	for idx, panel := range tab.panels {
+		isActivePanel := idx == tab.activePanelIdx
+
+		prog.setVisualCursorPosition(panel.topLeftX, panel.topLeftY)
+
+		// Drawing an individual panel
+		for y := 0; y <= panel.height; y++ {
+
+			lineIdx := y + buffer.topVisibleLineIdx
 
 			// Stopping if about to try to draw a line that doesn't exist
 			if lineIdx >= len(buffer.lines) {
@@ -157,16 +164,33 @@ func redraw[T Terminal](program *Program[T]) {
 			}
 
 			line := buffer.lines[lineIdx]
+
+			isActiveLine := lineIdx == panel.logicalCursorY
+
+			// Calculating visual cursor position
+			if isActivePanel && isActiveLine {
+				visualCursorY = panel.topLeftY + y
+				visualCursorX = panel.topLeftX
+
+				for x := 0; x < panel.logicalCursorX; x++ {
+					if line[x] == '\t' {
+						visualCursorX += prog.settings.tabstop
+					} else {
+						visualCursorX += 1
+					}
+				}
+			}
+
+			// Doing whitespace-related formatting, and printing the current line
 			line = replaceTabsWithSpaces(line, settings.tabstop, settings.tabchar)
 			lastCharIdx := min(panel.width, len(line))
+			prog.term.printf("%s", line[:lastCharIdx])
 
-			program.term.printf("%s", line[:lastCharIdx])
-			program.setVisualCursorPosition(panel.topLeftX, s.visualCursorY+1)
+			prog.setVisualCursorPosition(panel.topLeftX, s.visualCursorY+1)
 		}
 	}
 
-	// Resetting state after re-draw
-	program.setVisualCursorPosition(preDrawCursorX, preDrawCursorY)
+	prog.setVisualCursorPosition(visualCursorX, visualCursorY)
 	s.needsRedraw = false
 }
 
