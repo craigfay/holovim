@@ -77,6 +77,8 @@ func main() {
 
 func runMainLoop[T Terminal](prog *Program[T], inputIterator InputIterator) {
 	for {
+		prog.updateTopChrome()
+
 		if true || prog.state.needsRedraw {
 			redraw(prog)
 		}

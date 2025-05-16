@@ -8,17 +8,19 @@ type Program[T Terminal] struct {
 }
 
 type Settings struct {
-	tabstop           int
-	tabchar           string
-	cursor_x_overflow bool
-	keybind           KeyBindings
+	tabstop                 int
+	tabchar                 string
+	cursor_x_overflow       bool
+	tabNamesUseFullFileName bool
+	keybind                 KeyBindings
 }
 
 func defaultSettings() Settings {
 	return Settings{
-		tabstop:           4,
-		tabchar:           "›",
-		cursor_x_overflow: true,
+		tabstop:                 4,
+		tabchar:                 "›",
+		cursor_x_overflow:       true,
+		tabNamesUseFullFileName: false,
 		keybind: KeyBindings{
 			cursor_up:    'k',
 			cursor_down:  'j',
