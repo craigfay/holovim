@@ -1,8 +1,8 @@
 package main
 
 import (
-	"strings"
 	"runtime"
+	"strings"
 	"testing"
 )
 

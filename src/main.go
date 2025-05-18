@@ -92,7 +92,9 @@ func runMainLoop[T Terminal](prog *Program[T], inputIterator InputIterator) {
 			break
 		}
 
-		handleUserInput(input, prog)
+		if prog.state.currentMode == NormalMode {
+			normalMode(input, prog)
+		}
 
 		if prog.state.shouldExit {
 			return
@@ -100,7 +102,7 @@ func runMainLoop[T Terminal](prog *Program[T], inputIterator InputIterator) {
 	}
 }
 
-func handleUserInput[T Terminal](input byte, prog *Program[T]) {
+func normalMode[T Terminal](input byte, prog *Program[T]) {
 	keys := &prog.settings.keybind
 
 	if input == keys.cursor_down {

@@ -50,8 +50,16 @@ type Tab struct {
 	activePanelIdx int
 }
 
+type ProgramMode int
+
+const (
+	NormalMode ProgramMode = iota
+	InsertMode
+)
+
 type ProgramState struct {
 	shouldExit         bool
+	currentMode        ProgramMode
 	buffers            []Buffer
 	tabs               []Tab
 	activeTabIdx       int
