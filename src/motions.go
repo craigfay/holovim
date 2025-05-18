@@ -3,7 +3,7 @@ package main
 func (prog *Program[T]) moveCursorDown() {
 	s := &prog.state
 	panel := prog.getActivePanel()
-	buffer := &s.buffers[panel.bufferIdx]
+	buffer := prog.getActiveBuffer()
 	isAtContentBottom := panel.logicalCursorY+1 >= len(buffer.lines)
 	canScroll := buffer.topVisibleLineIdx+panel.height+1 < len(buffer.lines)
 	isAtViewportBottom := s.visualCursorY == panel.topLeftY+panel.height
@@ -27,11 +27,8 @@ func (prog *Program[T]) moveCursorDown() {
 
 func (prog *Program[T]) moveCursorUp() {
 	s := prog.state
-
-	tab := &s.tabs[s.activeTabIdx]
-	panel := &tab.panels[tab.activePanelIdx]
-	buffer := &s.buffers[panel.bufferIdx]
-
+	panel := prog.getActivePanel()
+	buffer := prog.getActiveBuffer()
 	canScroll := buffer.topVisibleLineIdx > 0
 
 	if panel.logicalCursorY > 0 || canScroll {
@@ -54,9 +51,8 @@ func (prog *Program[T]) moveCursorLeft() {
 	settings := prog.settings
 	s := prog.state
 
-	tab := &s.tabs[s.activeTabIdx]
-	panel := &tab.panels[tab.activePanelIdx]
-	buffer := &s.buffers[panel.bufferIdx]
+	panel := prog.getActivePanel()
+	buffer := prog.getActiveBuffer()
 
 	// Wrapping to the end of the previous line
 	if panel.logicalCursorX == 0 && panel.logicalCursorY != 0 {
@@ -83,9 +79,8 @@ func (prog *Program[T]) moveCursorRight() {
 	settings := prog.settings
 	s := prog.state
 
-	tab := &s.tabs[s.activeTabIdx]
-	panel := &tab.panels[tab.activePanelIdx]
-	buffer := &s.buffers[panel.bufferIdx]
+	panel := prog.getActivePanel()
+	buffer := prog.getActiveBuffer()
 
 	lineContent := &buffer.lines[panel.logicalCursorY]
 	lineLength := len(*lineContent)

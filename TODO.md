@@ -12,4 +12,5 @@
 ## Features
 - Preserve X position when moving between lines of different lengths
 - Add a setting for whether horizontal cursor movement can overflow and underflow to different lines
-- Use a "panel" data model, where each panel tracks its own cursor position
+- By default, deleting content doesn't put it in the clipboard.
+- Have a clipboard with multiple slots. When pasting, allow users to cycle through their recent cuts/copies.
