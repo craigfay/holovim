@@ -12,7 +12,7 @@ type Settings struct {
 	tabchar                 string
 	cursor_x_overflow       bool
 	tabNamesUseFullFileName bool
-	keybind                 KeyBindings
+	normalModeKeybind                 NormalModeKeyBindings
 }
 
 func defaultSettings() Settings {
@@ -21,13 +21,7 @@ func defaultSettings() Settings {
 		tabchar:                 "›",
 		cursor_x_overflow:       true,
 		tabNamesUseFullFileName: false,
-		keybind: KeyBindings{
-			cursor_up:    'k',
-			cursor_down:  'j',
-			cursor_left:  'h',
-			cursor_right: 'l',
-			close_buffer: 'q',
-		},
+		normalModeKeybind: DefaultNormalModeKeyBindings,
 	}
 }
 
@@ -35,14 +29,6 @@ type Buffer struct {
 	filepath          string
 	lines             []string
 	topVisibleLineIdx int
-}
-
-type KeyBindings struct {
-	cursor_up    byte
-	cursor_down  byte
-	cursor_left  byte
-	cursor_right byte
-	close_buffer byte
 }
 
 type Tab struct {

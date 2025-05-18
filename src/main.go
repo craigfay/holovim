@@ -102,31 +102,6 @@ func runMainLoop[T Terminal](prog *Program[T], inputIterator InputIterator) {
 	}
 }
 
-func normalMode[T Terminal](input byte, prog *Program[T]) {
-	keys := &prog.settings.keybind
-
-	if input == keys.cursor_down {
-		prog.moveCursorDown()
-	}
-
-	if input == keys.cursor_up {
-		prog.moveCursorUp()
-	}
-
-	if input == keys.cursor_left {
-		prog.moveCursorLeft()
-	}
-
-	if input == keys.cursor_right {
-		prog.moveCursorRight()
-	}
-
-	if input == keys.close_buffer {
-		prog.state.shouldExit = true
-	}
-
-	prog.state.needsRedraw = true
-}
 
 func redraw[T Terminal](prog *Program[T]) {
 	s := &prog.state
