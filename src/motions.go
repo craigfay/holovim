@@ -2,13 +2,9 @@ package main
 
 func (prog *Program[T]) moveCursorDown() {
 	s := &prog.state
-
 	panel := prog.getActivePanel()
-
 	buffer := &s.buffers[panel.bufferIdx]
-
 	isAtContentBottom := panel.logicalCursorY+1 >= len(buffer.lines)
-
 	canScroll := buffer.topVisibleLineIdx+panel.height+1 < len(buffer.lines)
 	isAtViewportBottom := s.visualCursorY == panel.topLeftY+panel.height
 
@@ -29,9 +25,8 @@ func (prog *Program[T]) moveCursorDown() {
 	}
 }
 
-func (p *Program[T]) moveCursorUp() {
-	settings := p.settings
-	s := p.state
+func (prog *Program[T]) moveCursorUp() {
+	s := prog.state
 
 	tab := &s.tabs[s.activeTabIdx]
 	panel := &tab.panels[tab.activePanelIdx]
@@ -40,47 +35,18 @@ func (p *Program[T]) moveCursorUp() {
 	canScroll := buffer.topVisibleLineIdx > 0
 
 	if panel.logicalCursorY > 0 || canScroll {
+		line := buffer.lines[panel.logicalCursorY]
 		prevLine := buffer.lines[panel.logicalCursorY-1]
-		newLogicalX := 0
-		newVisualX := s.leftChromeWidth
 
-		targetVisualCursorX := max(s.visualCursorX, s.bookmarkedVisualCursorX)
+		currentVisualX := getVisualX(line, panel.logicalCursorX, &prog.settings)
+		newLogicalX := getLogicalXWithVisualX(prevLine, currentVisualX, &prog.settings)
 
-		for {
-			if newLogicalX+1 >= len(prevLine) {
-				break
-			}
-
-			if newVisualX >= targetVisualCursorX {
-				break
-			}
-
-			visualXChunk := 0
-			isTab := prevLine[newLogicalX] == '\t'
-
-			if isTab {
-				visualXChunk += settings.tabstop
-			} else {
-				visualXChunk += 1
-			}
-
-			if newVisualX+visualXChunk > targetVisualCursorX {
-				break
-			}
-
-			newVisualX += visualXChunk
-			newLogicalX += 1
-		}
-
-		newVisualY := s.visualCursorY - 1
-
+		// Scrolling if necessary
 		if s.visualCursorY == s.topChromeHeight {
 			buffer.topVisibleLineIdx -= 1
-			newVisualY = s.visualCursorY
 		}
 
-		p.setVisualCursorPosition(newVisualX, newVisualY)
-		p.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY-1)
+		prog.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY-1)
 	}
 }
 
