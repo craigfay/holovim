@@ -1,6 +1,34 @@
 package main
 
-import "strings"
+import (
+	"strings"
+	"runtime"
+	"testing"
+)
+
+func failWithStackTrace(t *testing.T, format string, args ...interface{}) {
+	stackBuf := make([]byte, 1024)
+	stackSize := runtime.Stack(stackBuf, false)
+	stackTrace := string(stackBuf[:stackSize])
+
+	format += "\nStack trace:\n%s"
+	args = append(args, stackTrace)
+
+	t.Errorf(format, args...)
+}
+
+func (p *Program[MockTerminal]) assertLogicalPos(
+	t *testing.T,
+	x, y int,
+) {
+	tab := p.state.tabs[p.state.activeTabIdx]
+	panel := tab.panels[tab.activePanelIdx]
+	actX, actY := panel.logicalCursorX, panel.logicalCursorY
+
+	if actX != x || actY != y {
+		failWithStackTrace(t, "wanted logical pos x=%d,y=%d; got x=%d,y=%d", x, y, actX, actY)
+	}
+}
 
 func testingProgramFromBuf(buf string) Program[MockTerminal] {
 	buffers := []Buffer{
