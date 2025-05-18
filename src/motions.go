@@ -15,6 +15,11 @@ func (prog *Program[T]) moveCursorDown() {
 		currentVisualX := getVisualX(line, panel.logicalCursorX, &prog.settings)
 		newLogicalX := getLogicalXWithVisualX(nextLine, currentVisualX, &prog.settings)
 
+		// Respecting pinned visual x
+		if currentVisualX < panel.pinnedVisualCursorX {
+			newLogicalX = getLogicalXWithVisualX(nextLine, panel.pinnedVisualCursorX, &prog.settings)
+		}
+
 		// Scrolling if necessary
 		if isAtViewportBottom {
 			buffer.topVisibleLineIdx += 1
@@ -41,6 +46,11 @@ func (prog *Program[T]) moveCursorUp() {
 			buffer.topVisibleLineIdx -= 1
 		}
 
+		// Respecting pinned visual x
+		if currentVisualX < panel.pinnedVisualCursorX {
+			newLogicalX = getLogicalXWithVisualX(prevLine, panel.pinnedVisualCursorX, &prog.settings)
+		}
+
 		prog.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY-1)
 	}
 }
@@ -62,11 +72,15 @@ func (prog *Program[T]) moveCursorLeft() {
 			buffer.topVisibleLineIdx -= 1
 		}
 
+		panel.pinnedVisualCursorX = getVisualX(prevLine, newLogicalX, &prog.settings)
 		prog.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY-1)
 
 	} else if panel.logicalCursorX != 0 {
 		// Moving the cursor left within the current line
-		prog.setLogicalCursorPosition(panel.logicalCursorX-1, panel.logicalCursorY)
+		newLogicalX := panel.logicalCursorX - 1
+		line := buffer.lines[panel.logicalCursorY]
+		panel.pinnedVisualCursorX = getVisualX(line, newLogicalX, &prog.settings)
+		prog.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY)
 	}
 }
 
@@ -95,10 +109,13 @@ func (prog *Program[T]) moveCursorRight() {
 			buffer.topVisibleLineIdx += 1
 		}
 
+		panel.pinnedVisualCursorX = 0
 		prog.setLogicalCursorPosition(0, panel.logicalCursorY+1)
 
 	} else {
 		// moving the cursor right
-		prog.setLogicalCursorPosition(panel.logicalCursorX+1, panel.logicalCursorY)
+		newLogicalX := panel.logicalCursorX + 1
+		panel.pinnedVisualCursorX = getVisualX(*lineContent, newLogicalX, &prog.settings)
+		prog.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY)
 	}
 }

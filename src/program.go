@@ -75,15 +75,16 @@ type ProgramState struct {
 }
 
 type Panel struct {
-	topLeftX           int
-	topLeftY           int
-	logicalCursorX     int
-	logicalCursorY     int
-	lastLogicalCursorX int
-	lastLogicalCursorY int
-	width              int
-	height             int
-	bufferIdx          int
+	topLeftX            int
+	topLeftY            int
+	logicalCursorX      int
+	logicalCursorY      int
+	lastLogicalCursorX  int
+	lastLogicalCursorY  int
+	pinnedVisualCursorX int
+	width               int
+	height              int
+	bufferIdx           int
 }
 
 // Adding a helper to deliver ANSI instruction, while
