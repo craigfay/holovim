@@ -50,15 +50,13 @@ func (prog *Program[T]) moveCursorUp() {
 	}
 }
 
-func (p *Program[T]) moveCursorLeft() {
-	settings := p.settings
-	s := p.state
+func (prog *Program[T]) moveCursorLeft() {
+	settings := prog.settings
+	s := prog.state
 
 	tab := &s.tabs[s.activeTabIdx]
 	panel := &tab.panels[tab.activePanelIdx]
 	buffer := &s.buffers[panel.bufferIdx]
-
-	lineContent := &buffer.lines[panel.logicalCursorY]
 
 	// Wrapping to the end of the previous line
 	if panel.logicalCursorX == 0 && panel.logicalCursorY != 0 {
@@ -67,49 +65,23 @@ func (p *Program[T]) moveCursorLeft() {
 		}
 		prevLine := buffer.lines[panel.logicalCursorY-1]
 		newLogicalX := max(len(prevLine)-1, 0)
-		newVisualX := s.leftChromeWidth
-
-		// Counting the visual columns in the previous line
-		for i := 0; i < len(prevLine)-1; i++ {
-			if prevLine[i] == '\t' {
-				newVisualX += settings.tabstop
-			} else {
-				newVisualX += 1
-			}
-		}
-
-		newVisualY := s.visualCursorY - 1
 
 		// Scrolling if necessary
 		if s.visualCursorY == s.topChromeHeight {
 			buffer.topVisibleLineIdx -= 1
-			newVisualY = s.visualCursorY
 		}
 
-		p.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY-1)
-		p.setVisualCursorPosition(newVisualX, newVisualY)
-		s.bookmarkedVisualCursorX = newVisualX
+		prog.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY-1)
 
 	} else if panel.logicalCursorX != 0 {
 		// Moving the cursor left within the current line
-		thisChar := (*lineContent)[panel.logicalCursorX-1]
-		newVisualX := s.visualCursorX
-
-		if thisChar == '\t' {
-			newVisualX -= settings.tabstop
-		} else {
-			newVisualX -= 1
-		}
-
-		p.setLogicalCursorPosition(panel.logicalCursorX-1, panel.logicalCursorY)
-		p.setVisualCursorPosition(newVisualX, s.visualCursorY)
-		s.bookmarkedVisualCursorX = newVisualX
+		prog.setLogicalCursorPosition(panel.logicalCursorX-1, panel.logicalCursorY)
 	}
 }
 
-func (p *Program[T]) moveCursorRight() {
-	settings := p.settings
-	s := p.state
+func (prog *Program[T]) moveCursorRight() {
+	settings := prog.settings
+	s := prog.state
 
 	tab := &s.tabs[s.activeTabIdx]
 	panel := &tab.panels[tab.activePanelIdx]
@@ -119,8 +91,7 @@ func (p *Program[T]) moveCursorRight() {
 	lineLength := len(*lineContent)
 	isAtEndOfLine := panel.logicalCursorX+1 >= lineLength
 	isLastLine := panel.logicalCursorY == len(buffer.lines)-1
-	contentAreaMaxY := s.termHeight - s.bottomChromeHeight
-	isAtViewportBottom := s.visualCursorY == contentAreaMaxY
+	isAtViewportBottom := s.visualCursorY == panel.topLeftY+panel.height
 
 	if isAtEndOfLine && isLastLine {
 		return
@@ -132,31 +103,17 @@ func (p *Program[T]) moveCursorRight() {
 			return
 		}
 
-		newVisualY := s.visualCursorY + 1
-
 		// scrolling if necessary
 		if isAtViewportBottom {
-			newVisualY = s.visualCursorY
 			buffer.topVisibleLineIdx += 1
 		}
 
-		p.setLogicalCursorPosition(0, panel.logicalCursorY+1)
-		p.setVisualCursorPosition(s.leftChromeWidth, newVisualY)
-		s.bookmarkedVisualCursorX = s.leftChromeWidth
+		prog.setLogicalCursorPosition(0, panel.logicalCursorY+1)
+
 
 	} else {
 		// moving the cursor right
-		thisChar := (*lineContent)[panel.logicalCursorX]
-		newVisualX := s.visualCursorX
+		prog.setLogicalCursorPosition(panel.logicalCursorX+1, panel.logicalCursorY)
 
-		if thisChar == '\t' {
-			newVisualX += settings.tabstop
-		} else {
-			newVisualX += 1
-		}
-
-		p.setLogicalCursorPosition(panel.logicalCursorX+1, panel.logicalCursorY)
-		p.setVisualCursorPosition(newVisualX, s.visualCursorY)
-		s.bookmarkedVisualCursorX = newVisualX
 	}
 }
