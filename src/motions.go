@@ -1,12 +1,11 @@
 package main
 
 func (prog *Program[T]) moveCursorDown() {
-	s := &prog.state
 	panel := prog.getActivePanel()
 	buffer := prog.getActiveBuffer()
 	isAtContentBottom := panel.logicalCursorY+1 >= len(buffer.lines)
 	canScroll := buffer.topVisibleLineIdx+panel.height+1 < len(buffer.lines)
-	isAtViewportBottom := s.visualCursorY == panel.topLeftY+panel.height
+	isAtViewportBottom := prog.state.visualCursorY == panel.topLeftY+panel.height
 
 	if !isAtContentBottom || canScroll {
 		// Moving the cursor down
@@ -26,7 +25,6 @@ func (prog *Program[T]) moveCursorDown() {
 }
 
 func (prog *Program[T]) moveCursorUp() {
-	s := prog.state
 	panel := prog.getActivePanel()
 	buffer := prog.getActiveBuffer()
 	canScroll := buffer.topVisibleLineIdx > 0
@@ -39,7 +37,7 @@ func (prog *Program[T]) moveCursorUp() {
 		newLogicalX := getLogicalXWithVisualX(prevLine, currentVisualX, &prog.settings)
 
 		// Scrolling if necessary
-		if s.visualCursorY == s.topChromeHeight {
+		if prog.state.visualCursorY == prog.state.topChromeHeight {
 			buffer.topVisibleLineIdx -= 1
 		}
 
@@ -48,22 +46,19 @@ func (prog *Program[T]) moveCursorUp() {
 }
 
 func (prog *Program[T]) moveCursorLeft() {
-	settings := prog.settings
-	s := prog.state
-
 	panel := prog.getActivePanel()
 	buffer := prog.getActiveBuffer()
 
 	// Wrapping to the end of the previous line
 	if panel.logicalCursorX == 0 && panel.logicalCursorY != 0 {
-		if !settings.cursor_x_overflow {
+		if !prog.settings.cursor_x_overflow {
 			return
 		}
 		prevLine := buffer.lines[panel.logicalCursorY-1]
 		newLogicalX := max(len(prevLine)-1, 0)
 
 		// Scrolling if necessary
-		if s.visualCursorY == s.topChromeHeight {
+		if prog.state.visualCursorY == prog.state.topChromeHeight {
 			buffer.topVisibleLineIdx -= 1
 		}
 
@@ -76,9 +71,6 @@ func (prog *Program[T]) moveCursorLeft() {
 }
 
 func (prog *Program[T]) moveCursorRight() {
-	settings := prog.settings
-	s := prog.state
-
 	panel := prog.getActivePanel()
 	buffer := prog.getActiveBuffer()
 
@@ -86,15 +78,15 @@ func (prog *Program[T]) moveCursorRight() {
 	lineLength := len(*lineContent)
 	isAtEndOfLine := panel.logicalCursorX+1 >= lineLength
 	isLastLine := panel.logicalCursorY == len(buffer.lines)-1
-	isAtViewportBottom := s.visualCursorY == panel.topLeftY+panel.height
+	isAtViewportBottom := prog.state.visualCursorY == panel.topLeftY+panel.height
 
 	if isAtEndOfLine && isLastLine {
 		return
 	}
 
-	// wrapping to the beginning of the next line
 	if isAtEndOfLine && !isLastLine {
-		if !settings.cursor_x_overflow {
+		// wrapping to the beginning of the next line
+		if !prog.settings.cursor_x_overflow {
 			return
 		}
 
@@ -105,10 +97,8 @@ func (prog *Program[T]) moveCursorRight() {
 
 		prog.setLogicalCursorPosition(0, panel.logicalCursorY+1)
 
-
 	} else {
 		// moving the cursor right
 		prog.setLogicalCursorPosition(panel.logicalCursorX+1, panel.logicalCursorY)
-
 	}
 }

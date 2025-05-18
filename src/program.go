@@ -173,4 +173,3 @@ func (prog *Program[T]) getActiveBuffer() *Buffer {
 	panel := prog.getActivePanel()
 	return &prog.state.buffers[panel.bufferIdx]
 }
-
