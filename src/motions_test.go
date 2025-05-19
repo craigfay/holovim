@@ -4,11 +4,6 @@ import (
 	"testing"
 )
 
-func (p *Program[MockTerminal]) processInputs(i ...byte) {
-	it := NewStaticInputIterator(i)
-	runMainLoop(p, it)
-}
-
 func TestCursorDown(t *testing.T) {
 	p := testingProgramFromBuf(basicBuf)
 	p.processInputs('j')

@@ -6,6 +6,16 @@ import (
 	"testing"
 )
 
+func (prog *Program[MockTerminal]) assertBufferContent(t *testing.T, expected ...string) {
+	actual := prog.getActiveBuffer().lines
+
+	for i, line := range expected{
+		if actual[i] != line {
+			failWithStackTrace(t, "Line %d:\nWanted: `%v`\nGot: `%v`", expected, line)
+		}
+	}
+}
+
 func failWithStackTrace(t *testing.T, format string, args ...interface{}) {
 	stackBuf := make([]byte, 1024)
 	stackSize := runtime.Stack(stackBuf, false)
@@ -15,6 +25,11 @@ func failWithStackTrace(t *testing.T, format string, args ...interface{}) {
 	args = append(args, stackTrace)
 
 	t.Errorf(format, args...)
+}
+
+func (p *Program[MockTerminal]) processInputs(i ...byte) {
+	it := NewStaticInputIterator(i)
+	runMainLoop(p, it)
 }
 
 func (p *Program[MockTerminal]) assertLogicalPos(
