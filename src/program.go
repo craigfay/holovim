@@ -12,7 +12,7 @@ type Settings struct {
 	tabchar                 string
 	cursor_x_overflow       bool
 	tabNamesUseFullFileName bool
-	normalModeKeybind                 NormalModeKeyBindings
+	normalModeKeybind       NormalModeKeyBindings
 }
 
 func defaultSettings() Settings {
@@ -21,12 +21,12 @@ func defaultSettings() Settings {
 		tabchar:                 "›",
 		cursor_x_overflow:       true,
 		tabNamesUseFullFileName: false,
-		normalModeKeybind: DefaultNormalModeKeyBindings,
+		normalModeKeybind:       DefaultNormalModeKeyBindings,
 	}
 }
 
 func (b *Buffer) removeLine(lineNum int) {
-    b.lines = append(b.lines[:lineNum], b.lines[lineNum+1:]...)
+	b.lines = append(b.lines[:lineNum], b.lines[lineNum+1:]...)
 }
 
 func (b *Buffer) updateLine(lineNum int, content string) {

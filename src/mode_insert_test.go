@@ -9,4 +9,3 @@ func TestBasicInsertion(t *testing.T) {
 	p.processInputs('i', 'a')
 	p.assertBufferContent(t, "ab")
 }
-

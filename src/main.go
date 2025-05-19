@@ -110,7 +110,6 @@ func runMainLoop[T Terminal](prog *Program[T], inputIterator InputIterator) {
 	}
 }
 
-
 func redraw[T Terminal](prog *Program[T]) {
 	s := &prog.state
 	settings := &prog.settings

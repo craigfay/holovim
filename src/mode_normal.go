@@ -1,18 +1,17 @@
-
 package main
 
 type NormalModeKeyBindings struct {
-	cursorUp    byte
-	cursorDown  byte
-	cursorLeft  byte
-	cursorRight byte
-	closeBuffer byte
-	insertLeft byte
-	insertRight byte
-	insertAbove byte
-	insertBelow byte
+	cursorUp        byte
+	cursorDown      byte
+	cursorLeft      byte
+	cursorRight     byte
+	closeBuffer     byte
+	insertLeft      byte
+	insertRight     byte
+	insertAbove     byte
+	insertBelow     byte
 	insertLineStart byte
-	insertLineEnd byte
+	insertLineEnd   byte
 }
 
 var DefaultNormalModeKeyBindings = NormalModeKeyBindings{
@@ -21,14 +20,14 @@ var DefaultNormalModeKeyBindings = NormalModeKeyBindings{
 	cursorLeft:  'h',
 	cursorRight: 'l',
 	closeBuffer: 'q',
-	insertLeft: 'i',
+	insertLeft:  'i',
 
 	// TODO these should probably be macros that move the cursor, then insertLeft
-	insertRight: 'a',
-	insertAbove: 'o',
-	insertBelow: 'O',
+	insertRight:     'a',
+	insertAbove:     'o',
+	insertBelow:     'O',
 	insertLineStart: 'I',
-	insertLineEnd: 'A',
+	insertLineEnd:   'A',
 }
 
 func normalMode[T Terminal](input byte, prog *Program[T]) {
@@ -59,4 +58,3 @@ func normalMode[T Terminal](input byte, prog *Program[T]) {
 		prog.state.shouldExit = true
 	}
 }
-

@@ -18,8 +18,8 @@ type Terminal interface {
 }
 
 type MockTerminal struct {
-	cursorX int
-	cursorY int
+	cursorX     int
+	cursorY     int
 	isBarCursor bool
 }
 

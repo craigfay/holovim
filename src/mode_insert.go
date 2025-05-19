@@ -1,20 +1,18 @@
-
 package main
 
 func splice(original string, position int, char byte) string {
-    byteSlice := []byte(original)
+	byteSlice := []byte(original)
 
 	// Using the null byte as a sentinel value to indicate
 	// that the char at the given index should just be removed
-    if char == 0 {
-        byteSlice = append(byteSlice[:position], byteSlice[position+1:]...)
-    } else {
-        byteSlice = append(byteSlice[:position], append([]byte{char}, byteSlice[position:]...)...)
-    }
+	if char == 0 {
+		byteSlice = append(byteSlice[:position], byteSlice[position+1:]...)
+	} else {
+		byteSlice = append(byteSlice[:position], append([]byte{char}, byteSlice[position:]...)...)
+	}
 
-    return string(byteSlice)
+	return string(byteSlice)
 }
-
 
 func insertMode[T Terminal](input byte, prog *Program[T]) {
 	if input == Escape {
@@ -56,4 +54,3 @@ func insertMode[T Terminal](input byte, prog *Program[T]) {
 	buffer.lines[panel.logicalCursorY] = updatedLine
 	prog.setLogicalCursorPosition(panel.logicalCursorX+1, panel.logicalCursorY)
 }
-
