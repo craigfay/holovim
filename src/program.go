@@ -25,6 +25,14 @@ func defaultSettings() Settings {
 	}
 }
 
+func (b *Buffer) removeLine(lineNum int) {
+    b.lines = append(b.lines[:lineNum], b.lines[lineNum+1:]...)
+}
+
+func (b *Buffer) updateLine(lineNum int, content string) {
+	b.lines[lineNum] = content
+}
+
 type Buffer struct {
 	filepath          string
 	lines             []string
@@ -79,6 +87,16 @@ type Panel struct {
 	width               int
 	height              int
 	bufferIdx           int
+}
+
+func (prog *Program[T]) changeMode(mode ProgramMode) {
+	prog.state.currentMode = mode
+
+	if mode == NormalMode {
+		prog.term.useBlockCursor()
+	} else if mode == InsertMode {
+		prog.term.useBarCursor()
+	}
 }
 
 // Adding a helper to deliver ANSI instruction, while

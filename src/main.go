@@ -92,8 +92,16 @@ func runMainLoop[T Terminal](prog *Program[T], inputIterator InputIterator) {
 			break
 		}
 
+		prog.logger(fmt.Sprintf("Input: %v (%d)", input, int(input)))
+
+		if input == byte('1') {
+			return
+		}
+
 		if prog.state.currentMode == NormalMode {
 			normalMode(input, prog)
+		} else if prog.state.currentMode == InsertMode {
+			insertMode(input, prog)
 		}
 
 		if prog.state.shouldExit {

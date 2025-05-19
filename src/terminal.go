@@ -12,17 +12,28 @@ type Terminal interface {
 	setCursorPosition(x, y int)
 	getCursorPosition() (x, y int, err error)
 	getSize() (rows, cols int, err error)
-	printf(s string, args ...interface{})
+	useBarCursor()
+	useBlockCursor()
+	printf(s string, args ...interface{}) // TODO maybe return errors
 }
 
 type MockTerminal struct {
 	cursorX int
 	cursorY int
+	isBarCursor bool
 }
 
 func (t MockTerminal) printf(s string, args ...interface{}) {}
 
 func (t MockTerminal) clearScreen() {}
+
+func (t MockTerminal) useBarCursor() {
+	t.isBarCursor = true
+}
+
+func (t MockTerminal) useBlockCursor() {
+	t.isBarCursor = false
+}
 
 func (t MockTerminal) setCursorPosition(x, y int) {
 	t.cursorX = x
@@ -45,6 +56,16 @@ func (ANSI) printf(s string, args ...interface{}) {
 
 func (ANSI) clearScreen() {
 	fmt.Printf("\x1b[2J")
+}
+
+func (ANSI) useBarCursor() {
+	// On MacOS, this escape code is the blinking bar.
+	// On other systems, it is "\x1b[6 q".
+	fmt.Printf("\x1b[5 q")
+}
+
+func (ANSI) useBlockCursor() {
+	fmt.Printf("\x1b[2 q")
 }
 
 func (ANSI) setCursorPosition(x, y int) {
