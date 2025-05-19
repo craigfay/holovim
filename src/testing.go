@@ -9,9 +9,11 @@ import (
 func (prog *Program[MockTerminal]) assertBufferContent(t *testing.T, expected ...string) {
 	actual := prog.getActiveBuffer().lines
 
-	for i, line := range expected {
-		if actual[i] != line {
-			failWithStackTrace(t, "Line %d:\nWanted: `%v`\nGot: `%v`", expected, line)
+	for i, expectedLine := range expected {
+		actualLine := actual[i]
+
+		if actualLine != expectedLine {
+			failWithStackTrace(t, "Line %d:\nWanted: `%v`\nGot: `%v`", i, expectedLine, actualLine)
 		}
 	}
 }
