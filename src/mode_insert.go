@@ -20,11 +20,11 @@ func insertMode[T Terminal](input rune, prog *Program[T]) {
 
 	panel := prog.getActivePanel()
 	buffer := prog.getActiveBuffer()
-	line := buffer.lines[panel.logicalCursorY]
+	line := buffer.lines[panel.logicalCursorY].content
 
 	writeRune := func(r rune) {
-		updatedLine := splice(line, panel.logicalCursorX, r)
-		buffer.lines[panel.logicalCursorY] = updatedLine
+		updatedLineContent := splice(line, panel.logicalCursorX, r)
+		buffer.updateLine(panel.logicalCursorY, updatedLineContent)
 		prog.setLogicalCursorPosition(panel.logicalCursorX+1, panel.logicalCursorY)
 	}
 
@@ -44,7 +44,7 @@ func insertMode[T Terminal](input rune, prog *Program[T]) {
 
 		// Wrapping the current line back onto the previous line
 		if isFirstChar && !isFirstLine {
-			prevLine := buffer.lines[panel.logicalCursorY-1]
+			prevLine := buffer.lines[panel.logicalCursorY-1].content
 			newPrevLine := prevLine + line
 			buffer.updateLine(panel.logicalCursorY-1, newPrevLine)
 			buffer.removeLine(panel.logicalCursorY)

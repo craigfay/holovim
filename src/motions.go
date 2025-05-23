@@ -9,8 +9,8 @@ func (prog *Program[T]) moveCursorDown() {
 
 	if !isAtContentBottom || canScroll {
 		// Moving the cursor down
-		line := buffer.lines[panel.logicalCursorY]
-		nextLine := buffer.lines[panel.logicalCursorY+1]
+		line := buffer.lineContent(panel.logicalCursorY)
+		nextLine := buffer.lineContent(panel.logicalCursorY + 1)
 
 		currentVisualX := getVisualX(line, panel.logicalCursorX, &prog.settings)
 		newLogicalX := getLogicalXWithVisualX(nextLine, currentVisualX, &prog.settings)
@@ -35,8 +35,8 @@ func (prog *Program[T]) moveCursorUp() {
 	canScroll := buffer.topVisibleLineIdx > 0
 
 	if panel.logicalCursorY > 0 || canScroll {
-		line := buffer.lines[panel.logicalCursorY]
-		prevLine := buffer.lines[panel.logicalCursorY-1]
+		line := buffer.lineContent(panel.logicalCursorY)
+		prevLine := buffer.lineContent(panel.logicalCursorY - 1)
 
 		currentVisualX := getVisualX(line, panel.logicalCursorX, &prog.settings)
 		newLogicalX := getLogicalXWithVisualX(prevLine, currentVisualX, &prog.settings)
@@ -64,7 +64,7 @@ func (prog *Program[T]) moveCursorLeft() {
 		if !prog.settings.cursor_x_overflow {
 			return
 		}
-		prevLine := buffer.lines[panel.logicalCursorY-1]
+		prevLine := buffer.lineContent(panel.logicalCursorY - 1)
 		newLogicalX := max(len(prevLine)-1, 0)
 
 		// Scrolling if necessary
@@ -78,7 +78,7 @@ func (prog *Program[T]) moveCursorLeft() {
 	} else if panel.logicalCursorX != 0 {
 		// Moving the cursor left within the current line
 		newLogicalX := panel.logicalCursorX - 1
-		line := buffer.lines[panel.logicalCursorY]
+		line := buffer.lineContent(panel.logicalCursorY)
 		panel.pinnedVisualCursorX = getVisualX(line, newLogicalX, &prog.settings)
 		prog.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY)
 	}
@@ -88,8 +88,8 @@ func (prog *Program[T]) moveCursorRight() {
 	panel := prog.getActivePanel()
 	buffer := prog.getActiveBuffer()
 
-	lineContent := &buffer.lines[panel.logicalCursorY]
-	lineLength := len(*lineContent)
+	line := buffer.lineContent(panel.logicalCursorY)
+	lineLength := len(line)
 	isAtEndOfLine := panel.logicalCursorX+1 >= lineLength
 	isLastLine := panel.logicalCursorY == len(buffer.lines)-1
 	isAtViewportBottom := prog.state.visualCursorY == panel.topLeftY+panel.height
@@ -115,7 +115,7 @@ func (prog *Program[T]) moveCursorRight() {
 	} else {
 		// moving the cursor right
 		newLogicalX := panel.logicalCursorX + 1
-		panel.pinnedVisualCursorX = getVisualX(*lineContent, newLogicalX, &prog.settings)
+		panel.pinnedVisualCursorX = getVisualX(line, newLogicalX, &prog.settings)
 		prog.setLogicalCursorPosition(newLogicalX, panel.logicalCursorY)
 	}
 }

@@ -10,7 +10,7 @@ func (prog *Program[MockTerminal]) assertBufferContent(t *testing.T, expected ..
 	actual := prog.getActiveBuffer().lines
 
 	for i, expectedLine := range expected {
-		actualLine := actual[i]
+		actualLine := actual[i].content
 
 		if actualLine != expectedLine {
 			failWithStackTrace(t, "Line %d:\nWanted: `%v`\nGot: `%v`", i, expectedLine, actualLine)
@@ -48,10 +48,18 @@ func (p *Program[MockTerminal]) assertLogicalPos(
 }
 
 func testingProgramFromBuf(buf string) Program[MockTerminal] {
+	lines := []BufferLine{}
+
+	for _, content := range strings.Split(buf, "\n") {
+		lines = append(lines, BufferLine{
+			content: content,
+		})
+	}
+
 	buffers := []Buffer{
 		{
 			filepath:          "test",
-			lines:             strings.Split(buf, "\n"),
+			lines:             lines,
 			topVisibleLineIdx: 0,
 		},
 	}

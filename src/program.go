@@ -25,24 +25,40 @@ func defaultSettings() Settings {
 	}
 }
 
+type BufferLine struct {
+	content string
+	flags   BufferLineFlags
+}
+
+type BufferLineFlags struct {
+	isDir bool
+}
+
 func (b *Buffer) removeLine(lineNum int) {
 	b.lines = append(b.lines[:lineNum], b.lines[lineNum+1:]...)
 }
 
 func (b *Buffer) updateLine(lineNum int, content string) {
-	b.lines[lineNum] = content
+	b.lines[lineNum].content = content
+}
+
+func (b *Buffer) lineContent(lineNum int) string {
+	return b.lines[lineNum].content
 }
 
 func (b *Buffer) insertLine(lineNum int, content string) {
 	// TODO handle cases where lineNum is out of bounds
-	b.lines = append(b.lines, "")
+	b.lines = append(b.lines, BufferLine{})
 	copy(b.lines[lineNum+1:], b.lines[lineNum:])
-	b.lines[lineNum] = content
+
+	b.lines[lineNum] = BufferLine{
+		content: content,
+	}
 }
 
 type Buffer struct {
 	filepath          string
-	lines             []string
+	lines             []BufferLine
 	topVisibleLineIdx int
 }
 
@@ -60,6 +76,7 @@ const (
 
 type ProgramState struct {
 	shouldExit         bool
+	cwd                string
 	currentMode        ProgramMode
 	buffers            []Buffer
 	tabs               []Tab
@@ -94,6 +111,15 @@ type Panel struct {
 	width               int
 	height              int
 	bufferIdx           int
+}
+
+func (prog *Program[T]) setCWD(path string) (string, error) {
+	dirpath, err := getClosestDir(path)
+	if err != nil {
+		return "", err
+	}
+	prog.state.cwd = dirpath
+	return dirpath, nil
 }
 
 func (prog *Program[T]) changeMode(mode ProgramMode) {

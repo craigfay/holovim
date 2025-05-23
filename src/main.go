@@ -12,12 +12,30 @@ func main() {
 	args := os.Args
 
 	// Extracting the filename from the command-line arguments, and opening it
-	filename := args[1]
+	filepath := args[1]
 
-	file, err := os.Open(filename)
+	status := checkPath(filepath)
+
+	if status == FileStatusNotExists {
+		fmt.Printf("File or directory does not exist: %v", filepath)
+		return
+	}
+
+	if status == FileStatusAccessDenied {
+		fmt.Printf("Access denied: %v", filepath)
+		return
+	}
+
+	if status == FileStatusIsDirectory {
+		// TODO open file explorer
+		fmt.Printf("Cannot open directories yet: %v", filepath)
+		return
+	}
+
+	file, err := os.Open(filepath)
 
 	if err != nil {
-		fmt.Printf("Error opening file %s: %v\n", filename, err)
+		fmt.Printf("Error opening file %s: %v\n", filepath, err)
 		return
 	}
 
@@ -25,11 +43,13 @@ func main() {
 	defer file.Close()
 
 	// Loading the file contents into a list of strings, line by line
-	lines := []string{}
+	lines := []BufferLine{}
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+		lines = append(lines, BufferLine{
+			content: scanner.Text(),
+		})
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -39,7 +59,7 @@ func main() {
 
 	buffers := []Buffer{
 		{
-			filepath:          filename,
+			filepath:          filepath,
 			lines:             lines,
 			topVisibleLineIdx: 0,
 		},
@@ -53,6 +73,7 @@ func main() {
 	}
 
 	program.state.buffers = buffers
+	program.setCWD(filepath)
 
 	// Saving the current state of the terminal,
 	// and re-loading it when this program exits
@@ -140,7 +161,7 @@ func redraw[T Terminal](prog *Program[T]) {
 				break
 			}
 
-			line := buffer.lines[lineIdx]
+			line := buffer.lines[lineIdx].content
 
 			isActiveLine := lineIdx == panel.logicalCursorY
 
