@@ -17,3 +17,6 @@
 - Add a setting for whether horizontal cursor movement can overflow and underflow to different lines
 - By default, deleting content doesn't put it in the clipboard.
 - Have a clipboard with multiple slots. When pasting, allow users to cycle through their recent cuts/copies.
+- Yank to the system clipboard by default, or very easily
+- Visual mode
+- Periodic autosave
