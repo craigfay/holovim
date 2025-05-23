@@ -56,27 +56,28 @@ func NewStdinIterator() *StdinIterator {
 }
 
 func (it *StdinIterator) Next() (done bool, r rune, err error) {
-	// If there are runes in the tempBuffer, return them first
+	// If there are runes in the tempBuffer, returning them first
 	if len(it.tempBuffer) > 0 {
 		r = it.tempBuffer[0]
-		it.tempBuffer = it.tempBuffer[1:] // Remove the returned rune from the buffer
+ 		// Removing the returned rune from the buffer
+		it.tempBuffer = it.tempBuffer[1:]
 		return false, r, nil
 	}
 
 	for {
-		// Read the next rune from the channel
+		// Reading the next rune from the channel
 		r, ok := <-it.runes
 		if !ok {
 			// Channel is closed, no more input
 			return true, 0, io.EOF
 		}
 
-		// If the rune is not ESC, return it immediately
+		// If the rune is not ESC, returning it immediately
 		if r != '\x1b' {
 			return false, r, nil
 		}
 
-		// Handle ESC: possible escape sequence
+		// Handle possible escape sequence
 		it.tempBuffer = append(it.tempBuffer, r)     // Add ESC to the buffer
 		timer := time.NewTimer(1 * time.Millisecond) // Short timeout for escape sequences
 
@@ -88,19 +89,19 @@ func (it *StdinIterator) Next() (done bool, r rune, err error) {
 					return true, 0, io.EOF
 				}
 
-				it.tempBuffer = append(it.tempBuffer, nextRune) // Add the rune to the buffer
+				it.tempBuffer = append(it.tempBuffer, nextRune) // Adding the rune to the buffer
 
-				// Check if this is part of a known escape sequence
+				// Checking if this is part of a known escape sequence
 				if len(it.tempBuffer) == 2 && it.tempBuffer[1] == '[' {
 					// Possible CSI sequence (ESC [)
 					continue
 				}
 
 				if len(it.tempBuffer) == 3 {
-					// Handle specific CSI sequences
+					// Handling specific CSI sequences
 					switch it.tempBuffer[2] {
 					case 'A':
-						it.tempBuffer = nil // Clear the buffer after handling
+						it.tempBuffer = nil // Clearing the buffer after handling
 						return false, RuneUpArrow, nil
 					case 'B':
 						it.tempBuffer = nil
@@ -140,22 +141,22 @@ func (it *StdinIterator) Next() (done bool, r rune, err error) {
 					}
 				}
 
-				// If it's not part of a known escape sequence, break out
+				// If it's not part of a known escape sequence, breaking out
 				break
 
 			case <-timer.C:
-				// Timer expired, treat ESC as a standalone key
+				// Timer expired, treating ESC as a standalone key
 				timer.Stop()
 				r = it.tempBuffer[0]
-				it.tempBuffer = it.tempBuffer[1:] // Remove the returned rune from the buffer
+				it.tempBuffer = it.tempBuffer[1:] // Removing the returned rune from the buffer
 				return false, r, nil
 			}
 		}
 
-		// If we exit the inner loop without returning, flush the buffer
+		// If we exit the inner loop without returning, flushing the buffer
 		if len(it.tempBuffer) > 0 {
 			r = it.tempBuffer[0]
-			it.tempBuffer = it.tempBuffer[1:] // Remove the returned rune from the buffer
+			it.tempBuffer = it.tempBuffer[1:] // Removing the returned rune from the buffer
 			return false, r, nil
 		}
 	}
