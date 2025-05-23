@@ -1,21 +1,19 @@
 package main
 
-func splice(original string, position int, char byte) string {
-	byteSlice := []byte(original)
+func splice(original string, position int, r rune) string {
+	slice := []rune(original)
 
-	// Using the null byte as a sentinel value to indicate
-	// that the char at the given index should just be removed
-	if char == 0 {
-		byteSlice = append(byteSlice[:position], byteSlice[position+1:]...)
+	if r == RuneDelete {
+		slice = append(slice[:position], slice[position+1:]...)
 	} else {
-		byteSlice = append(byteSlice[:position], append([]byte{char}, byteSlice[position:]...)...)
+		slice = append(slice[:position], append([]rune{r}, slice[position:]...)...)
 	}
 
-	return string(byteSlice)
+	return string(slice)
 }
 
-func insertMode[T Terminal](input byte, prog *Program[T]) {
-	if input == Escape {
+func insertMode[T Terminal](input rune, prog *Program[T]) {
+	if input == RuneEscape {
 		prog.changeMode(NormalMode)
 		return
 	}
@@ -24,7 +22,18 @@ func insertMode[T Terminal](input byte, prog *Program[T]) {
 	buffer := prog.getActiveBuffer()
 	line := buffer.lines[panel.logicalCursorY]
 
-	if input == Backspace {
+	writeRune := func(r rune) {
+		updatedLine := splice(line, panel.logicalCursorX, r)
+		buffer.lines[panel.logicalCursorY] = updatedLine
+		prog.setLogicalCursorPosition(panel.logicalCursorX+1, panel.logicalCursorY)
+	}
+
+	if isStandardUnicode(input) {
+		writeRune(input)
+		return
+	}
+
+	if input == RuneBackspace || input == RuneDelete {
 		isFirstLine := panel.logicalCursorY == 0
 		isFirstChar := panel.logicalCursorX == 0
 
@@ -44,13 +53,20 @@ func insertMode[T Terminal](input byte, prog *Program[T]) {
 		}
 
 		// Removing the previous char and updating
-		updatedLine := splice(line, panel.logicalCursorX-1, 0)
+		updatedLine := splice(line, panel.logicalCursorX-1, RuneDelete)
 		buffer.updateLine(panel.logicalCursorY, updatedLine)
 		prog.setLogicalCursorPosition(panel.logicalCursorX-1, panel.logicalCursorY)
 		return
 	}
 
-	updatedLine := splice(line, panel.logicalCursorX, input)
-	buffer.lines[panel.logicalCursorY] = updatedLine
-	prog.setLogicalCursorPosition(panel.logicalCursorX+1, panel.logicalCursorY)
+	if input == RuneEnter || input == RuneCarriageReturn {
+		left := line[:panel.logicalCursorX]
+		right := line[panel.logicalCursorX:]
+
+		buffer.updateLine(panel.logicalCursorY, left)
+		buffer.insertLine(panel.logicalCursorY+1, right)
+
+		prog.setLogicalCursorPosition(0, panel.logicalCursorY+1)
+		return
+	}
 }

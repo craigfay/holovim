@@ -33,6 +33,13 @@ func (b *Buffer) updateLine(lineNum int, content string) {
 	b.lines[lineNum] = content
 }
 
+func (b *Buffer) insertLine(lineNum int, content string) {
+	// TODO handle cases where lineNum is out of bounds
+	b.lines = append(b.lines, "")
+	copy(b.lines[lineNum+1:], b.lines[lineNum:])
+	b.lines[lineNum] = content
+}
+
 type Buffer struct {
 	filepath          string
 	lines             []string

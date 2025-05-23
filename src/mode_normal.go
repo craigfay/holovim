@@ -1,17 +1,17 @@
 package main
 
 type NormalModeKeyBindings struct {
-	cursorUp        byte
-	cursorDown      byte
-	cursorLeft      byte
-	cursorRight     byte
-	closeBuffer     byte
-	insertLeft      byte
-	insertRight     byte
-	insertAbove     byte
-	insertBelow     byte
-	insertLineStart byte
-	insertLineEnd   byte
+	cursorUp        rune
+	cursorDown      rune
+	cursorLeft      rune
+	cursorRight     rune
+	closeBuffer     rune
+	insertLeft      rune
+	insertRight     rune
+	insertAbove     rune
+	insertBelow     rune
+	insertLineStart rune
+	insertLineEnd   rune
 }
 
 var DefaultNormalModeKeyBindings = NormalModeKeyBindings{
@@ -30,7 +30,7 @@ var DefaultNormalModeKeyBindings = NormalModeKeyBindings{
 	insertLineEnd:   'A',
 }
 
-func normalMode[T Terminal](input byte, prog *Program[T]) {
+func normalMode[T Terminal](input rune, prog *Program[T]) {
 	keys := &prog.settings.normalModeKeybind
 
 	if input == keys.insertLeft {
@@ -38,19 +38,19 @@ func normalMode[T Terminal](input byte, prog *Program[T]) {
 		return
 	}
 
-	if input == keys.cursorDown {
+	if input == keys.cursorDown || input == RuneDownArrow {
 		prog.moveCursorDown()
 	}
 
-	if input == keys.cursorUp {
+	if input == keys.cursorUp || input == RuneUpArrow {
 		prog.moveCursorUp()
 	}
 
-	if input == keys.cursorLeft {
+	if input == keys.cursorLeft || input == RuneLeftArrow {
 		prog.moveCursorLeft()
 	}
 
-	if input == keys.cursorRight {
+	if input == keys.cursorRight || input == RuneRightArrow {
 		prog.moveCursorRight()
 	}
 

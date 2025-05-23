@@ -29,7 +29,7 @@ func failWithStackTrace(t *testing.T, format string, args ...interface{}) {
 	t.Errorf(format, args...)
 }
 
-func (p *Program[MockTerminal]) processInputs(i ...byte) {
+func (p *Program[MockTerminal]) processInputs(i ...rune) {
 	it := NewStaticInputIterator(i)
 	runMainLoop(p, it)
 }

@@ -2,6 +2,8 @@
 ## Bugs
 - Bad error message when incorrect args passed on startup
 - End of Input yields an error message that pollutes test output
+- Make the logger available in all contexts, and try to avoid passing it around
+
 
 ## Testing Scenarios
 - Track drawn content in MockTerminal, and assert against
