@@ -59,7 +59,7 @@ func (it *StdinIterator) Next() (done bool, r rune, err error) {
 	// If there are runes in the tempBuffer, returning them first
 	if len(it.tempBuffer) > 0 {
 		r = it.tempBuffer[0]
- 		// Removing the returned rune from the buffer
+		// Removing the returned rune from the buffer
 		it.tempBuffer = it.tempBuffer[1:]
 		return false, r, nil
 	}
